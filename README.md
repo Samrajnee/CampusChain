@@ -1,6 +1,6 @@
 # CampusChain
 
-A unified platform for student–institution operations. CampusChain consolidates governance, identity, and campus management into a single system — replacing scattered tools, paper trails, and ad-hoc forms with a structured, auditable record for every student from enrollment to graduation.
+A unified platform for student–institution operations. CampusChain consolidates governance, identity, and campus management into a single system; replacing scattered tools, paper trails, and ad-hoc forms with a structured, auditable record for every student from enrollment to graduation.
 
 > **Repository:** [github.com/Samrajnee/CampusChain](https://github.com/Samrajnee/CampusChain)  
 > **Status:** Pre-MVP · Active Development
@@ -35,7 +35,7 @@ CampusChain replaces that with three interconnected layers:
 |**Identity & Reputation**|Verified certificates, badges, XP, portfolio        |
 |**Campus Operations**    |Events, clubs, attendance, announcements, mentorship|
 
-Every action a student takes — attending an event, casting a vote, submitting a proposal, earning a badge — feeds into a permanent, tamper-evident record attached to their profile. That record is theirs to share with employers, institutions, or anyone with a verification link.
+Every action a student takes; attending an event, casting a vote, submitting a proposal, earning a badge, feeds into a permanent, tamper-evident record attached to their profile. That record is theirs to share with employers, institutions, or anyone with a verification link.
 
 -----
 
@@ -54,7 +54,7 @@ Every action a student takes — attending an event, casting a vote, submitting 
 
 - Email/password auth + Google OAuth2
 - Digitally signed certificates with unique IDs and QR code verification
-- Public `/verify/:certificateId` endpoint — no login required
+- Public `/verify/:certificateId` endpoint, no login required
 - Student portfolio page: earned credentials, badges, activity timeline
 - Privacy controls: students choose what is visible (CGPA, address, blood group, etc.)
 - Achievement badges: unlocked automatically based on contribution thresholds
@@ -140,7 +140,7 @@ Every action a student takes — attending an event, casting a vote, submitting 
 └─────────────────────────────────────────────────────┘
 ```
 
-The server is a **single Node.js process** organized into domain modules — not microservices. This keeps deployment simple (one server, one database) while maintaining clean separation between domains. Each module owns its own routes, controllers, and service logic. All modules share the same Prisma client and fire events to the XP ledger.
+The server is a **single Node.js process** organized into domain modules, not microservices. This keeps deployment simple (one server, one database) while maintaining clean separation between domains. Each module owns its own routes, controllers, and service logic. All modules share the same Prisma client and fire events to the XP ledger.
 
 -----
 
@@ -305,17 +305,17 @@ PostgreSQL is the single source of truth. Prisma manages the schema and migratio
 
 Core tables (top-level):
 
-- `users` — students and staff, with role and department
-- `certificates` — issued certs with HMAC signature and unique ID
-- `badges` — badge definitions and issuance records
-- `xp_ledger` — append-only log of every XP event per user
-- `elections` — election metadata and audit log
-- `votes` — anonymized via voter token, linked to election not user
-- `proposals` — community proposals with vote counts and status
-- `grievances` — with status history and escalation timestamps
-- `events` — with committee members and RSVP records
-- `clubs` — with membership, advisor, and budget records
-- `announcements` — with role-scoped visibility and read receipts
+- `users` : students and staff, with role and department
+- `certificates` : issued certs with HMAC signature and unique ID
+- `badges` : badge definitions and issuance records
+- `xp_ledger` : append-only log of every XP event per user
+- `elections` : election metadata and audit log
+- `votes` : anonymized via voter token, linked to election not user
+- `proposals` : community proposals with vote counts and status
+- `grievances` : with status history and escalation timestamps
+- `events` : with committee members and RSVP records
+- `clubs` : with membership, advisor, and budget records
+- `announcements` : with role-scoped visibility and read receipts
 
 Run migrations:
 
@@ -342,7 +342,7 @@ BullMQ workers run in the same Node process (separate worker files) and process 
 |`weekly-digest`       |Cron: every Monday 8am             |Aggregate new proposals, events, announcements; send email |
 |`grievance-escalation`|Cron: every hour                   |Find grievances unresolved past configured SLA, bump status|
 
-All jobs are idempotent — safe to retry on failure.
+All jobs are idempotent; safe to retry on failure.
 
 -----
 
@@ -362,4 +362,4 @@ Code style: ESLint + Prettier (config in repo root). Run `npm run lint` before p
 
 ## License
 
-MIT
+MIT License - Copyright (c) 2026 Samrajnee
