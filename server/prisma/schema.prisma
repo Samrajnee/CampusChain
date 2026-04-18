@@ -1,13 +1,794 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  HOD
+  LAB_ASSISTANT
+  LIBRARIAN
+  PRINCIPAL
+  SUPER_ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum ElectionStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  OPEN
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+}
+
+enum GrievanceStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum ClubStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+}
+
+enum BudgetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+enum CertificateType {
+  PARTICIPATION
+  ACHIEVEMENT
+  LEADERSHIP
+  ACADEMIC
+  CUSTOM
+}
+
+enum BadgeCategory {
+  GOVERNANCE
+  SOCIAL
+  ACADEMIC
+  LEADERSHIP
+  EVENTS
+  FUN
+}
+
+enum NotificationType {
+  ANNOUNCEMENT
+  ELECTION
+  PROPOSAL
+  GRIEVANCE
+  EVENT
+  BADGE
+  BUDGET
+  DIGEST
+  GENERAL
+}
+
+enum MentorshipStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  DECLINED
+}
+
+enum XPEventType {
+  VOTE_CAST
+  PROPOSAL_SUBMITTED
+  PROPOSAL_UPVOTED
+  EVENT_ATTENDED
+  CLUB_JOINED
+  BADGE_EARNED
+  CERTIFICATE_ISSUED
+  GRIEVANCE_RESOLVED
+  PEER_ENDORSED
+  ELECTION_ORGANIZED
+  MENTORSHIP_COMPLETED
+  POLL_PARTICIPATED
+  ANNOUNCEMENT_READ
+  CUSTOM
+}
+
+// ─────────────────────────────────────────────
+// USER & PROFILE
+// ─────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String?
+  googleId          String?   @unique
+  role              Role      @default(STUDENT)
+  isActive          Boolean   @default(true)
+  isEmailVerified   Boolean   @default(false)
+  emailVerifyToken  String?
+  passwordResetToken String?
+  passwordResetExpiry DateTime?
+  lastLoginAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  profile           Profile?
+  studentDetail     StudentDetail?
+  facultyDetail     FacultyDetail?
+
+  // Governance
+  votescast         Vote[]
+  voterTokens       VoterToken[]
+  proposals         Proposal[]
+  proposalVotes     ProposalVote[]
+  grievances        Grievance[]
+  pollResponses     PollResponse[]
+
+  // Campus ops
+  eventsCreated     Event[]         @relation("EventCreator")
+  eventRSVPs        EventRSVP[]
+  attendanceMarked  Attendance[]    @relation("AttendanceMarker")
+  attendanceRecords Attendance[]    @relation("AttendanceStudent")
+  clubMemberships   ClubMember[]
+  budgetRequests    BudgetRequest[]
+  budgetApprovals   BudgetRequest[] @relation("BudgetApprover")
+
+  // Identity
+  certificates      Certificate[]
+  badgesEarned      UserBadge[]
+  xpLedger          XPLedger[]
+
+  // Notifications
+  notifications     Notification[]
+  announcementReads AnnouncementRead[]
+
+  // Social
+  endorsementsGiven    SkillEndorsement[] @relation("Endorser")
+  endorsementsReceived SkillEndorsement[] @relation("Endorsed")
+  mentorships          Mentorship[]       @relation("Mentor")
+  menteeships          Mentorship[]       @relation("Mentee")
+
+  // Audit
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model Profile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName       String
+  lastName        String
+  avatarUrl       String?
+  bio             String?
+  phone           String?
+  dateOfBirth     DateTime?
+  gender          Gender?
+
+  // Visibility toggles (student controls these)
+  showAddress     Boolean   @default(false)
+  showPhone       Boolean   @default(false)
+  showCgpa        Boolean   @default(false)
+  showBloodGroup  Boolean   @default(false)
+  showDob         Boolean   @default(false)
+  isProfilePublic Boolean   @default(true)
+
+  // Shareable portfolio
+  portfolioSlug   String?   @unique
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("profiles")
+}
+
+model StudentDetail {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentId    String   @unique
+  department   String
+  year         Int
+  semester     Int
+  section      String?
+  cgpa         Float?
+  bloodGroup   String?
+  address      String?
+  hostelName   String?
+
+  // Gamification totals (derived from ledger but cached here)
+  xpTotal      Int      @default(0)
+  level        Int      @default(1)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("student_details")
+}
+
+model FacultyDetail {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  employeeId   String   @unique
+  department   String
+  designation  String
+  qualification String?
+
+  // Faculty advisor for clubs
+  advisorFor   Club[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("faculty_details")
+}
+
+// ─────────────────────────────────────────────
+// GOVERNANCE — ELECTIONS
+// ─────────────────────────────────────────────
+
+model Election {
+  id            String          @id @default(uuid())
+  title         String
+  description   String?
+  status        ElectionStatus  @default(DRAFT)
+  isAnonymous   Boolean         @default(false)
+  startsAt      DateTime
+  endsAt        DateTime
+
+  // Eligibility filters (null = all students eligible)
+  eligibleYear  Int?
+  eligibleDept  String?
+
+  createdBy     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  candidates    Candidate[]
+  votes         Vote[]
+  voterTokens   VoterToken[]
+
+  @@map("elections")
+}
+
+model Candidate {
+  id           String    @id @default(uuid())
+  electionId   String
+  election     Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+  userId       String
+  position     String
+  manifesto    String?
+  voteCount    Int       @default(0)
+
+  createdAt    DateTime  @default(now())
+
+  votes        Vote[]
+
+  @@unique([electionId, userId])
+  @@map("candidates")
+}
+
+model Vote {
+  id           String    @id @default(uuid())
+  electionId   String
+  election     Election  @relation(fields: [electionId], references: [id])
+  candidateId  String
+  candidate    Candidate @relation(fields: [candidateId], references: [id])
+
+  // For non-anonymous: direct link
+  voterId      String?
+  voter        User?     @relation(fields: [voterId], references: [id])
+
+  // For anonymous: token-based
+  voterTokenId String?   @unique
+  voterToken   VoterToken? @relation(fields: [voterTokenId], references: [id])
+
+  castAt       DateTime  @default(now())
+
+  @@unique([electionId, voterId])
+  @@map("votes")
+}
+
+model VoterToken {
+  id           String    @id @default(uuid())
+  electionId   String
+  election     Election  @relation(fields: [electionId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  token        String    @unique
+  hasVoted     Boolean   @default(false)
+  issuedAt     DateTime  @default(now())
+
+  vote         Vote?
+
+  @@unique([electionId, userId])
+  @@map("voter_tokens")
+}
+
+// ─────────────────────────────────────────────
+// GOVERNANCE — PROPOSALS & POLLS
+// ─────────────────────────────────────────────
+
+model Proposal {
+  id          String         @id @default(uuid())
+  authorId    String
+  author      User           @relation(fields: [authorId], references: [id])
+  title       String
+  body        String
+  status      ProposalStatus @default(OPEN)
+  isAnonymous Boolean        @default(false)
+  upvotes     Int            @default(0)
+  downvotes   Int            @default(0)
+
+  adminNote   String?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?      // soft delete
+
+  votes       ProposalVote[]
+
+  @@map("proposals")
+}
+
+model ProposalVote {
+  id         String   @id @default(uuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  isUpvote   Boolean
+
+  createdAt  DateTime @default(now())
+
+  @@unique([proposalId, userId])
+  @@map("proposal_votes")
+}
+
+model Poll {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  createdBy   String
+  isLive      Boolean        @default(true)
+  endsAt      DateTime?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  options     PollOption[]
+  responses   PollResponse[]
+
+  @@map("polls")
+}
+
+model PollOption {
+  id        String         @id @default(uuid())
+  pollId    String
+  poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text      String
+  voteCount Int            @default(0)
+
+  responses PollResponse[]
+
+  @@map("poll_options")
+}
+
+model PollResponse {
+  id           String     @id @default(uuid())
+  pollId       String
+  poll         Poll       @relation(fields: [pollId], references: [id])
+  pollOptionId String
+  pollOption   PollOption @relation(fields: [pollOptionId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+
+  respondedAt  DateTime   @default(now())
+
+  @@unique([pollId, userId])
+  @@map("poll_responses")
+}
+
+// ─────────────────────────────────────────────
+// GOVERNANCE — GRIEVANCES
+// ─────────────────────────────────────────────
+
+model Grievance {
+  id            String          @id @default(uuid())
+  studentId     String
+  student       User            @relation(fields: [studentId], references: [id])
+  title         String
+  description   String
+  status        GrievanceStatus @default(SUBMITTED)
+  isAnonymous   Boolean         @default(false)
+
+  assignedTo    String?
+  adminNote     String?
+  escalatedAt   DateTime?
+  resolvedAt    DateTime?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  statusHistory GrievanceLog[]
+
+  @@map("grievances")
+}
+
+model GrievanceLog {
+  id          String          @id @default(uuid())
+  grievanceId String
+  grievance   Grievance       @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  fromStatus  GrievanceStatus
+  toStatus    GrievanceStatus
+  note        String?
+  changedBy   String
+  changedAt   DateTime        @default(now())
+
+  @@map("grievance_logs")
+}
+
+// ─────────────────────────────────────────────
+// CAMPUS OPS — EVENTS
+// ─────────────────────────────────────────────
+
+model Event {
+  id            String      @id @default(uuid())
+  title         String
+  description   String?
+  venue         String?
+  startsAt      DateTime
+  endsAt        DateTime?
+  status        EventStatus @default(UPCOMING)
+  bannerUrl     String?
+  qrCode        String?     // QR code data for check-in
+  maxCapacity   Int?
+
+  createdById   String
+  createdBy     User        @relation("EventCreator", fields: [createdById], references: [id])
+  clubId        String?
+  club          Club?       @relation(fields: [clubId], references: [id])
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  rsvps         EventRSVP[]
+  attendance    Attendance[]
+  committee     EventCommittee[]
+
+  @@map("events")
+}
+
+model EventRSVP {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  rsvpAt    DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@map("event_rsvps")
+}
+
+model EventCommittee {
+  id        String @id @default(uuid())
+  eventId   String
+  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String // e.g. "Coordinator", "Volunteer"
+
+  @@unique([eventId, userId])
+  @@map("event_committees")
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  studentId   String
+  student     User     @relation("AttendanceStudent", fields: [studentId], references: [id])
+  markedById  String
+  markedBy    User     @relation("AttendanceMarker", fields: [markedById], references: [id])
+  markedAt    DateTime @default(now())
+  method      String   @default("QR") // "QR" or "MANUAL"
+
+  @@unique([eventId, studentId])
+  @@map("attendance")
+}
+
+// ─────────────────────────────────────────────
+// CAMPUS OPS — CLUBS
+// ─────────────────────────────────────────────
+
+model Club {
+  id           String     @id @default(uuid())
+  name         String     @unique
+  description  String?
+  logoUrl      String?
+  status       ClubStatus @default(PENDING_APPROVAL)
+
+  advisorId    String?
+  advisor      FacultyDetail? @relation(fields: [advisorId], references: [id])
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  members      ClubMember[]
+  events       Event[]
+  budgets      BudgetRequest[]
+
+  @@map("clubs")
+}
+
+model ClubMember {
+  id        String   @id @default(uuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   @default("MEMBER") // "PRESIDENT", "SECRETARY", "MEMBER"
+  joinedAt  DateTime @default(now())
+
+  @@unique([clubId, userId])
+  @@map("club_members")
+}
+
+model BudgetRequest {
+  id          String       @id @default(uuid())
+  clubId      String
+  club        Club         @relation(fields: [clubId], references: [id])
+  requestedBy String
+  requester   User         @relation(fields: [requestedBy], references: [id])
+  title       String
+  description String?
+  amount      Float
+  status      BudgetStatus @default(PENDING)
+
+  approvedBy  String?
+  approver    User?        @relation("BudgetApprover", fields: [approvedBy], references: [id])
+  approvedAt  DateTime?
+  adminNote   String?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("budget_requests")
+}
+
+// ─────────────────────────────────────────────
+// IDENTITY — CERTIFICATES & BADGES
+// ─────────────────────────────────────────────
+
+model Certificate {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  title         String
+  description   String?
+  type          CertificateType @default(PARTICIPATION)
+  issuedBy      String          // name of issuing authority
+  issuedAt      DateTime        @default(now())
+
+  // Verification
+  uniqueCode    String          @unique @default(uuid())
+  signature     String          // HMAC signature of cert data
+  qrCodeUrl     String?
+  fileUrl       String?         // stored PDF
+
+  isRevoked     Boolean         @default(false)
+  revokedAt     DateTime?
+  revokedReason String?
+
+  eventId       String?         // linked event if applicable
+  deletedAt     DateTime?
+
+  @@map("certificates")
+}
+
+model Badge {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  description  String?
+  iconUrl      String?
+  category     BadgeCategory
+  isFun        Boolean       @default(false) // fun/nametag badges vs achievement badges
+  xpReward     Int           @default(0)
+
+  // Auto-unlock condition (stored as JSON rule)
+  unlockRule   Json?
+
+  createdAt    DateTime      @default(now())
+
+  usersEarned  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+  awardedBy String?  // null = auto-awarded, set = manually by admin
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+// ─────────────────────────────────────────────
+// IDENTITY — XP LEDGER
+// ─────────────────────────────────────────────
+
+model XPLedger {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  amount      Int         // positive = credit, negative = debit
+  eventType   XPEventType
+  description String?
+  refId       String?     // ID of the related entity (eventId, proposalId, etc.)
+  createdAt   DateTime    @default(now())
+
+  @@map("xp_ledger")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS & ANNOUNCEMENTS
+// ─────────────────────────────────────────────
+
+model Announcement {
+  id          String             @id @default(uuid())
+  title       String
+  body        String
+  createdBy   String
+  targetRole  Role?              // null = everyone
+  targetDept  String?            // null = all departments
+  targetYear  Int?               // null = all years
+  isPinned    Boolean            @default(false)
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+
+  reads       AnnouncementRead[]
+
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             String       @id @default(uuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, userId])
+  @@map("announcement_reads")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  body      String?
+  refId     String?          // related entity ID
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// SOCIAL — ENDORSEMENTS & MENTORSHIP
+// ─────────────────────────────────────────────
+
+model Skill {
+  id           String             @id @default(uuid())
+  name         String             @unique
+  createdAt    DateTime           @default(now())
+
+  endorsements SkillEndorsement[]
+
+  @@map("skills")
+}
+
+model SkillEndorsement {
+  id          String   @id @default(uuid())
+  skillId     String
+  skill       Skill    @relation(fields: [skillId], references: [id])
+  endorserId  String
+  endorser    User     @relation("Endorser", fields: [endorserId], references: [id])
+  endorsedId  String
+  endorsed    User     @relation("Endorsed", fields: [endorsedId], references: [id])
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@unique([skillId, endorserId, endorsedId])
+  @@map("skill_endorsements")
+}
+
+model Mentorship {
+  id          String           @id @default(uuid())
+  mentorId    String
+  mentor      User             @relation("Mentor", fields: [mentorId], references: [id])
+  menteeId    String
+  mentee      User             @relation("Mentee", fields: [menteeId], references: [id])
+  status      MentorshipStatus @default(PENDING)
+  topic       String?
+  note        String?
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  completedAt DateTime?
+
+  @@unique([mentorId, menteeId])
+  @@map("mentorships")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String   // e.g. "ELECTION_CREATED", "VOTE_CAST", "CERTIFICATE_REVOKED"
+  targetId  String?  // ID of the affected record
+  targetType String? // e.g. "Election", "Certificate"
+  metadata  Json?    // any extra context
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
 }

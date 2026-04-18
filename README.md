@@ -16,7 +16,6 @@ A unified platform for student–institution operations. CampusChain consolidate
 - [Folder Structure](#folder-structure)
 - [Getting Started](#getting-started)
 - [Build Order](#build-order)
-- [Environment Variables](#environment-variables)
 - [Database](#database)
 - [Background Jobs](#background-jobs)
 - [Contributing](#contributing)
@@ -25,7 +24,7 @@ A unified platform for student–institution operations. CampusChain consolidate
 
 ## What This Is
 
-Most institutions manage student life across 5–10 disconnected tools: Google Forms for complaints, Excel sheets for attendance, WhatsApp for announcements, paper certificates for achievements. None of these talk to each other. Nothing is searchable. Nothing is verifiable.
+Most institutions manage student life across 5-10 disconnected tools: Google Forms for complaints, Excel sheets for attendance, WhatsApp for announcements, paper certificates for achievements. None of these talk to each other. Nothing is searchable. Nothing is verifiable.
 
 CampusChain replaces that with three interconnected layers:
 
@@ -152,11 +151,10 @@ The server is a **single Node.js process** organized into domain modules, not mi
 |Styling          |TailwindCSS           |Utility-first, no CSS file sprawl                     |
 |Data fetching    |TanStack Query        |Caching, background refetch, deduplication            |
 |Global state     |Zustand               |Lightweight; avoids Redux overhead for this scale     |
-|Routing          |React Router v6       |Standard, supports nested layouts                     |
 |Realtime (client)|Socket.IO client      |Pairs with server for live polls and notifications    |
 |Charts           |Recharts              |Simple React-native chart library                     |
 |Backend          |Node.js + Express.js  |Minimal overhead, huge ecosystem                      |
-|ORM              |Prisma + PostgreSQL   |Type-safe queries, auto-generated migrations          |
+|ORM + DB         |Prisma + PostgreSQL   |Type-safe queries, auto-generated migrations          |
 |Sessions / Cache |Redis                 |Sessions, pub/sub, job queues                         |
 |Job queue        |BullMQ (on Redis)     |Reliable async processing with retries                |
 |Auth             |Passport.js           |Handles JWT + Google OAuth2 in one library            |
@@ -264,40 +262,9 @@ Build in this order. Each phase depends on the one before it.
 
 **Wire the XP ledger in Phase 1** even if the front-end comes later. Every module simply emits an event; a BullMQ worker credits the student. Retrofitting this later requires touching every module.
 
------
-
-## Environment Variables
-
-```env
-# Server
-DATABASE_URL=postgresql://user:password@localhost:5432/campuschain
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=your_jwt_secret
-JWT_ANON_SECRET=your_anonymous_voter_secret
-
-# Google OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:4000/auth/google/callback
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-
-# Email
-RESEND_API_KEY=
-
-# Certificate signing
-HMAC_CERT_SECRET=your_cert_signing_secret
-
-# App
-PORT=4000
-CLIENT_URL=http://localhost:5173
-NODE_ENV=development
-```
 
 -----
+
 
 ## Database
 
@@ -359,7 +326,3 @@ This project is in early development. If you want to contribute:
 Code style: ESLint + Prettier (config in repo root). Run `npm run lint` before pushing.
 
 -----
-
-## License
-
-MIT License - Copyright (c) 2026 Samrajnee
