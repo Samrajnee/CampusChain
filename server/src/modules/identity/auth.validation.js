@@ -1,0 +1,41 @@
+import { z } from 'zod'
+
+export const registerSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Must contain at least one number'),
+  firstName: z.string().min(1, 'First name is required').max(50),
+  lastName: z.string().min(1, 'Last name is required').max(50),
+  role: z.enum(['STUDENT', 'TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL']).optional(),
+
+  // Student-specific (required when role is STUDENT or omitted)
+  studentId: z.string().optional(),
+  department: z.string().optional(),
+  year: z.coerce.number().int().min(1).max(6).optional(),
+  semester: z.coerce.number().int().min(1).max(12).optional(),
+
+  // Faculty-specific
+  employeeId: z.string().optional(),
+  designation: z.string().optional(),
+})
+
+export const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Must contain at least one number'),
+})
