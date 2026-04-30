@@ -1,34 +1,24 @@
-import ElectionsPage from './pages/elections/ElectionsPage'
-import ElectionDetailPage from './pages/elections/ElectionDetailPage'
-import CreateElectionModal from './pages/elections/CreateElectionModal'
-import ProposalsPage from './pages/proposals/ProposalsPage'
-import GrievancesPage from './pages/grievances/GrievancesPage'
-import PollsPage from './pages/polls/PollsPage'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import VerifyPage from './pages/VerifyPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
-import LandingPage from './pages/LandingPage'
+import ElectionsPage from './pages/elections/ElectionsPage'
+import ElectionDetailPage from './pages/elections/ElectionDetailPage'
+import ProposalsPage from './pages/proposals/ProposalsPage'
+import GrievancesPage from './pages/grievances/GrievancesPage'
+import PollsPage from './pages/polls/PollsPage'
 import EventsPage from './pages/events/EventsPage'
 import EventDetailPage from './pages/events/EventDetailPage'
 import ClubsPage from './pages/clubs/ClubsPage'
 import ClubDetailPage from './pages/clubs/ClubDetailPage'
-
-// Redirect logged-in users away from auth pages
-function GuestRoute() {
-  const { user, loading } = useAuth()
-  if (loading) return <FullScreenSpinner />
-  return user ? <Navigate to="/dashboard" replace /> : <Outlet />
-}
-
-// Protect pages that require login
-function ProtectedRoute() {
-  const { user, loading } = useAuth()
-  if (loading) return <FullScreenSpinner />
-  return user ? <Outlet /> : <Navigate to="/login" replace />
-}
+import ProfilePage from './pages/profile/ProfilePage'
+import CertificatesPage from './pages/certificates/CertificatesPage'
+import LeaderboardPage from './pages/leaderboard/LeaderboardPage'
+import DirectoryPage from './pages/directory/DirectoryPage'
 
 function FullScreenSpinner() {
   return (
@@ -38,8 +28,21 @@ function FullScreenSpinner() {
   )
 }
 
+function GuestRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <FullScreenSpinner />
+  return user ? <Navigate to="/dashboard" replace /> : <Outlet />
+}
+
+function ProtectedRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <FullScreenSpinner />
+  return user ? <Outlet /> : <Navigate to="/login" replace />
+}
+
 const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
+  { path: '/verify/:code', element: <VerifyPage /> },
 
   {
     element: <GuestRoute />,
@@ -53,64 +56,20 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       { path: '/dashboard', element: <DashboardPage /> },
+      { path: '/elections', element: <ElectionsPage /> },
+      { path: '/elections/:id', element: <ElectionDetailPage /> },
+      { path: '/proposals', element: <ProposalsPage /> },
+      { path: '/grievances', element: <GrievancesPage /> },
+      { path: '/polls', element: <PollsPage /> },
+      { path: '/events', element: <EventsPage /> },
+      { path: '/events/:id', element: <EventDetailPage /> },
+      { path: '/clubs', element: <ClubsPage /> },
+      { path: '/clubs/:id', element: <ClubDetailPage /> },
+      { path: '/profile', element: <ProfilePage /> },
+      { path: '/certificates', element: <CertificatesPage /> },
+      { path: '/leaderboard', element: <LeaderboardPage /> },
+      { path: '/directory', element: <DirectoryPage /> },
     ],
-  },
-
-  {
-    element: <ElectionsPage />,
-    children: [
-        { path: '/elections', element: <ElectionsPage /> },
-        { path: '/elections/:id', element: <ElectionDetailPage /> },
-    ]
-  },
-
-  {
-    element: <ProposalsPage />,
-    children: [
-        { path: '/proposals', element: <ProposalsPage /> },
-    ]
-  },
-
-  {
-    element: <GrievancesPage />,
-    children: [
-       { path: '/grievances', element: <GrievancesPage /> },
-    ]
-  },
-
-  {
-    element: <PollsPage />,
-    children: [
-        { path: '/polls', element: <PollsPage /> },
-    ]
-  },
-
-   {
-    element: <EventsPage />,
-    children: [
-       { path: '/events', element: <EventsPage /> },
-    ]
-  },
-
-   {
-    element: <EventDetailPage />,
-    children: [
-        { path: '/events/:id', element: <EventDetailPage /> },
-    ]
-  },
-
-   {
-    element: <ClubsPage />,
-    children: [
-        { path: '/clubs', element: <ClubsPage /> },
-    ]
-  },
-
-   {
-    element: <ClubDetailPage />,
-    children: [
-        { path: '/clubs/:id', element: <ClubDetailPage /> },
-    ]
   },
 
   { path: '*', element: <Navigate to="/" replace /> },

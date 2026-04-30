@@ -14,6 +14,7 @@ import authRoutes from './modules/identity/auth.routes.js'
 import electionRoutes from './modules/governance/elections.routes.js'
 import governanceRoutes from './modules/governance/governance.routes.js'
 import campusOpsRoutes from './modules/campus-ops/campus-ops.routes.js'
+import identityRoutes from './modules/identity/identity.routes.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -38,6 +39,7 @@ app.use('/api', campusOpsRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/elections', electionRoutes)
 app.use('/api', governanceRoutes)
+app.use('/api', identityRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
