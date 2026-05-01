@@ -1,3 +1,5 @@
+import { notify } from '../notifications/notifications.service.js';
+import { creditXP } from '../../lib/xp.js';
 import prisma from '../../lib/prisma.js'
 import { writeAuditLog } from '../../lib/audit.js'
 import crypto from 'crypto'
@@ -7,8 +9,7 @@ import crypto from 'crypto'
 export const createElection = async ({ title, description, startsAt, endsAt, isAnonymous, eligibleYear, eligibleDept, createdBy }) => {
   const election = await prisma.election.create({
     data: {
-      title,
-      description,
+      title, description,
       startsAt: new Date(startsAt),
       endsAt: new Date(endsAt),
       isAnonymous: isAnonymous ?? false,
@@ -46,7 +47,6 @@ export const listElections = async ({ userId, role }) => {
     orderBy: { createdAt: 'desc' },
   })
 
-  // Attach whether the current user has voted
   const enriched = await Promise.all(
     elections.map(async (e) => {
       const hasVoted = await prisma.vote.findFirst({
@@ -147,7 +147,6 @@ export const updateElectionStatus = async ({ id, status, actorId }) => {
     throw { status: 400, message: `Cannot transition from ${election.status} to ${status}` }
   }
 
-  // When opening — issue voter tokens if anonymous
   if (status === 'OPEN' && election.isAnonymous) {
     await issueVoterTokens(election)
   }
@@ -238,28 +237,31 @@ export const castVote = async ({ electionId, candidateId, userId }) => {
   })
   if (existing) throw { status: 409, message: 'You have already voted in this election' }
 
-  const [vote] = await prisma.$transaction([
-    prisma.vote.create({
+  await prisma.$transaction(async (tx) => {
+    await tx.vote.create({
       data: { electionId, candidateId, voterId: userId },
-    }),
-    prisma.candidate.update({
+    })
+    await tx.candidate.update({
       where: { id: candidateId },
       data: { voteCount: { increment: 1 } },
-    }),
-    prisma.xPLedger.create({
-      data: {
-        userId,
-        amount: 10,
-        eventType: 'VOTE_CAST',
-        description: `Voted in election: ${election.title}`,
-        refId: electionId,
-      },
-    }),
-    prisma.studentDetail.update({
-      where: { userId },
-      data: { xpTotal: { increment: 10 } },
-    }),
-  ])
+    })
+    await creditXP({
+      userId,
+      amount: 10,
+      eventType: 'VOTE_CAST',
+      description: `Voted in election: ${election.title}`,
+      refId: electionId,
+      tx,
+    })
+  })
+
+  await notify({
+    userId,
+    type: 'VOTE_CAST',
+    title: 'Vote recorded',
+    body: `Your vote in "${election.title}" has been recorded.`,
+    refId: electionId,
+  })
 
   await writeAuditLog({
     actorId: userId,
@@ -279,32 +281,27 @@ const castAnonymousVote = async ({ election, candidateId, userId }) => {
   if (!voterToken) throw { status: 403, message: 'You are not eligible to vote in this election' }
   if (voterToken.hasVoted) throw { status: 409, message: 'You have already voted in this election' }
 
-  await prisma.$transaction([
-    prisma.vote.create({
+  await prisma.$transaction(async (tx) => {
+    await tx.vote.create({
       data: { electionId: election.id, candidateId, voterTokenId: voterToken.id },
-    }),
-    prisma.candidate.update({
+    })
+    await tx.candidate.update({
       where: { id: candidateId },
       data: { voteCount: { increment: 1 } },
-    }),
-    prisma.voterToken.update({
+    })
+    await tx.voterToken.update({
       where: { id: voterToken.id },
       data: { hasVoted: true },
-    }),
-    prisma.xPLedger.create({
-      data: {
-        userId,
-        amount: 10,
-        eventType: 'VOTE_CAST',
-        description: `Voted in election: ${election.title}`,
-        refId: election.id,
-      },
-    }),
-    prisma.studentDetail.update({
-      where: { userId },
-      data: { xpTotal: { increment: 10 } },
-    }),
-  ])
+    })
+    await creditXP({
+      userId,
+      amount: 10,
+      eventType: 'VOTE_CAST',
+      description: `Voted in election: ${election.title}`,
+      refId: election.id,
+      tx,
+    })
+  })
 
   await writeAuditLog({
     actorId: userId,

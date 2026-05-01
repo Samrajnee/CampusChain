@@ -3,9 +3,11 @@ import { sendSuccess, sendError } from '../../lib/apiResponse.js'
 
 export const register = async (req, res, next) => {
   try {
+    console.log('Register body:', req.body)  // ADD THIS
     const result = await AuthService.registerUser(req.body)
     return sendSuccess(res, result, 'Account created successfully', 201)
   } catch (err) {
+    console.log('Register error:', err)  // ADD THIS
     if (err.status) return sendError(res, err.message, err.status)
     next(err)
   }

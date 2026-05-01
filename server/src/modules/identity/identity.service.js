@@ -1,3 +1,5 @@
+import { notify } from '../notifications/notifications.service.js';
+import { creditXP } from '../../lib/xp.js';
 import prisma from '../../lib/prisma.js'
 import { writeAuditLog } from '../../lib/audit.js'
 import crypto from 'crypto'
@@ -45,22 +47,24 @@ export const issueCertificate = async ({ userId, title, description, type, issue
       include: { user: { include: { profile: true } } },
     })
 
-    await tx.xPLedger.create({
-      data: {
-        userId,
-        amount: 50,
-        eventType: 'CERTIFICATE_ISSUED',
-        description: `Certificate issued: ${title}`,
-        refId: cert.id,
-      },
-    })
-
-    await tx.studentDetail.updateMany({
-      where: { userId },
-      data: { xpTotal: { increment: 50 } },
+    await creditXP({
+      userId,
+      amount: 50,
+      eventType: 'CERTIFICATE_ISSUED',
+      description: `Certificate issued: ${title}`,
+      refId: cert.id,
+      tx,
     })
 
     return cert
+  })
+
+  await notify({
+    userId,
+    type: 'CERTIFICATE_ISSUED',
+    title: 'Certificate issued',
+    body: `You have received a certificate: "${title}".`,
+    refId: certificate.id,
   })
 
   await writeAuditLog({
@@ -148,22 +152,25 @@ export const awardBadge = async ({ userId, badgeId, awardedBy }) => {
     })
 
     if (badge.xpReward > 0) {
-      await tx.xPLedger.create({
-        data: {
-          userId,
-          amount: badge.xpReward,
-          eventType: 'BADGE_EARNED',
-          description: `Badge earned: ${badge.name}`,
-          refId: badgeId,
-        },
-      })
-      await tx.studentDetail.updateMany({
-        where: { userId },
-        data: { xpTotal: { increment: badge.xpReward } },
+      await creditXP({
+        userId,
+        amount: badge.xpReward,
+        eventType: 'BADGE_EARNED',
+        description: `Badge earned: ${badge.name}`,
+        refId: badgeId,
+        tx,
       })
     }
 
     return ub
+  })
+
+  await notify({
+    userId,
+    type: 'BADGE_EARNED',
+    title: 'Badge earned',
+    body: `You earned the "${badge.name}" badge.`,
+    refId: badge.id,
   })
 
   await writeAuditLog({

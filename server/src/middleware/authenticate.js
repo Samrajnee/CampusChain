@@ -1,33 +1,47 @@
-import { verifyToken } from '../lib/jwt.js'
-import { sendError } from '../lib/apiResponse.js'
-import prisma from '../lib/prisma.js'
+import { verifyToken } from '../lib/jwt.js';
+import { sendError } from '../lib/apiResponse.js';
+import prisma from '../lib/prisma.js';
 
-const authenticate = async (req, res, next) => {
+export async function authenticate(req, res, next) {
   try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return sendError(res, 'No token provided', 401)
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return sendError(res, 'No token provided', 401);
     }
 
-    const token = authHeader.split(' ')[1]
-    const decoded = verifyToken(token)
+    const token = authHeader.split(' ')[1];
+    const payload = verifyToken(token);
 
+    if (!payload) return sendError(res, 'Invalid or expired token', 401);
+
+    // Check user still active
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, email: true, role: true, isActive: true },
-    })
+      where: { id: payload.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true,
+        studentDetail: {
+          select: { department: true, year: true },
+        },
+      },
+    });
 
     if (!user || !user.isActive) {
-      return sendError(res, 'Account not found or deactivated', 401)
+      return sendError(res, 'Account not found or deactivated', 401);
     }
 
-    req.user = user
-    next()
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      studentDetail: user.studentDetail,
+    };
+
+    next();
   } catch (err) {
-    if (err.name === 'TokenExpiredError') return sendError(res, 'Session expired, please log in again', 401)
-    if (err.name === 'JsonWebTokenError') return sendError(res, 'Invalid token', 401)
-    return sendError(res, 'Authentication failed', 401)
+    return sendError(res, 'Authentication failed', 401);
   }
 }
-
-export default authenticate

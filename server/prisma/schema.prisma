@@ -765,8 +765,10 @@ model Mentorship {
   mentee      User             @relation("Mentee", fields: [menteeId], references: [id])
   status      MentorshipStatus @default(PENDING)
   topic       String?
+  description String
   note        String?
 
+  acceptedAt  DateTime?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   completedAt DateTime?

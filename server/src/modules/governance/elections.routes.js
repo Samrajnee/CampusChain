@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import * as ElectionsController from './elections.controller.js'
-import authenticate from '../../middleware/authenticate.js'
+import { authenticate } from '../../middleware/authenticate.js'
 import authorize from '../../middleware/authorize.js'
 import validate from '../../middleware/validate.js'
 import {

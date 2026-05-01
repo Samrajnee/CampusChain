@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const mutation = useMutation({
     mutationFn: registerApi,
     onSuccess: (res) => {
+          console.log('Register response:', res.data)  // ADD THIS
       const { token, user } = res.data.data
       login(token, user)
       navigate('/dashboard')

@@ -1,3 +1,5 @@
+import { notify } from '../notifications/notifications.service.js';
+import { creditXP } from '../../lib/xp.js';
 import prisma from '../../lib/prisma.js'
 import { writeAuditLog } from '../../lib/audit.js'
 import crypto from 'crypto'
@@ -11,9 +13,7 @@ export const createEvent = async ({ title, description, venue, startsAt, endsAt,
 
   const event = await prisma.event.create({
     data: {
-      title,
-      description,
-      venue,
+      title, description, venue,
       startsAt: new Date(startsAt),
       endsAt: endsAt ? new Date(endsAt) : null,
       maxCapacity: maxCapacity ?? null,
@@ -90,6 +90,15 @@ export const rsvpEvent = async ({ eventId, userId }) => {
   }
 
   await prisma.eventRSVP.create({ data: { eventId, userId } })
+
+  await notify({
+    userId,
+    type: 'EVENT_RSVP',
+    title: 'RSVP confirmed',
+    body: `You are registered for "${event.title}".`,
+    refId: eventId,
+  })
+
   return { action: 'added', message: 'RSVP confirmed' }
 }
 
@@ -107,19 +116,13 @@ export const markAttendance = async ({ eventId, studentId, markedById, method = 
       data: { eventId, studentId, markedById, method },
     })
 
-    await tx.xPLedger.create({
-      data: {
-        userId: studentId,
-        amount: 20,
-        eventType: 'EVENT_ATTENDED',
-        description: `Attended event: ${event.title}`,
-        refId: eventId,
-      },
-    })
-
-    await tx.studentDetail.updateMany({
-      where: { userId: studentId },
-      data: { xpTotal: { increment: 20 } },
+    await creditXP({
+      userId: studentId,
+      amount: 20,
+      eventType: 'EVENT_ATTENDED',
+      description: `Attended event: ${event.title}`,
+      refId: eventId,
+      tx,
     })
 
     return a
@@ -137,9 +140,7 @@ export const markAttendance = async ({ eventId, studentId, markedById, method = 
 }
 
 export const checkInByQr = async ({ qrCode, userId, markedById }) => {
-  const event = await prisma.event.findFirst({
-    where: { qrCode, deletedAt: null },
-  })
+  const event = await prisma.event.findFirst({ where: { qrCode, deletedAt: null } })
   if (!event) throw { status: 404, message: 'Invalid QR code' }
   if (event.status === 'CANCELLED') throw { status: 400, message: 'This event has been cancelled' }
 
@@ -260,19 +261,13 @@ export const joinClub = async ({ clubId, userId }) => {
       data: { clubId, userId, role: 'MEMBER' },
     })
 
-    await tx.xPLedger.create({
-      data: {
-        userId,
-        amount: 10,
-        eventType: 'CLUB_JOINED',
-        description: `Joined club: ${club.name}`,
-        refId: clubId,
-      },
-    })
-
-    await tx.studentDetail.updateMany({
-      where: { userId },
-      data: { xpTotal: { increment: 10 } },
+    await creditXP({
+      userId,
+      amount: 10,
+      eventType: 'CLUB_JOINED',
+      description: `Joined club: ${club.name}`,
+      refId: clubId,
+      tx,
     })
 
     return m
@@ -297,10 +292,7 @@ export const updateClubStatus = async ({ id, status, advisorId, actorId }) => {
 
   const updated = await prisma.club.update({
     where: { id },
-    data: {
-      status,
-      ...(advisorId && { advisorId }),
-    },
+    data: { status, ...(advisorId && { advisorId }) },
   })
 
   await writeAuditLog({
@@ -352,11 +344,6 @@ export const updateBudgetStatus = async ({ id, status, adminNote, actorId }) => 
 
   return prisma.budgetRequest.update({
     where: { id },
-    data: {
-      status,
-      adminNote,
-      approvedBy: actorId,
-      approvedAt: new Date(),
-    },
+    data: { status, adminNote, approvedBy: actorId, approvedAt: new Date() },
   })
 }

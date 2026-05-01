@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import passport from '../../lib/passport.js'
 import * as AuthController from './auth.controller.js'
-import authenticate from '../../middleware/authenticate.js'
+import { authenticate } from '../../middleware/authenticate.js'
 import validate from '../../middleware/validate.js'
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.validation.js'
+
+console.log('AuthController:', AuthController)
 
 const router = Router()
 

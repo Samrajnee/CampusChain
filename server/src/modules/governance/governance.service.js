@@ -1,3 +1,5 @@
+import { notify } from '../notifications/notifications.service.js';
+import { creditXP } from '../../lib/xp.js';
 import prisma from '../../lib/prisma.js'
 import { writeAuditLog } from '../../lib/audit.js'
 
@@ -11,21 +13,13 @@ export const createProposal = async ({ authorId, title, body, isAnonymous }) => 
     include: { author: { include: { profile: true } } },
   })
 
-  await prisma.$transaction([
-    prisma.xPLedger.create({
-      data: {
-        userId: authorId,
-        amount: 15,
-        eventType: 'PROPOSAL_SUBMITTED',
-        description: `Submitted proposal: ${title}`,
-        refId: proposal.id,
-      },
-    }),
-    prisma.studentDetail.updateMany({
-      where: { userId: authorId },
-      data: { xpTotal: { increment: 15 } },
-    }),
-  ])
+  await creditXP({
+    userId: authorId,
+    amount: 15,
+    eventType: 'PROPOSAL_SUBMITTED',
+    description: `Submitted proposal: ${title}`,
+    refId: proposal.id,
+  })
 
   await writeAuditLog({
     actorId: authorId,
@@ -88,7 +82,6 @@ export const voteOnProposal = async ({ proposalId, userId, isUpvote }) => {
 
   if (existing) {
     if (existing.isUpvote === isUpvote) {
-      // Remove vote (toggle off)
       await prisma.$transaction([
         prisma.proposalVote.delete({ where: { id: existing.id } }),
         prisma.proposal.update({
@@ -100,7 +93,6 @@ export const voteOnProposal = async ({ proposalId, userId, isUpvote }) => {
       ])
       return { action: 'removed' }
     } else {
-      // Switch vote
       await prisma.$transaction([
         prisma.proposalVote.update({ where: { id: existing.id }, data: { isUpvote } }),
         prisma.proposal.update({
@@ -114,28 +106,23 @@ export const voteOnProposal = async ({ proposalId, userId, isUpvote }) => {
     }
   }
 
-  await prisma.$transaction([
-    prisma.proposalVote.create({ data: { proposalId, userId, isUpvote } }),
-    prisma.proposal.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.proposalVote.create({ data: { proposalId, userId, isUpvote } })
+    await tx.proposal.update({
       where: { id: proposalId },
       data: isUpvote
         ? { upvotes: { increment: 1 } }
         : { downvotes: { increment: 1 } },
-    }),
-    prisma.xPLedger.create({
-      data: {
-        userId,
-        amount: 5,
-        eventType: 'PROPOSAL_UPVOTED',
-        description: 'Voted on a proposal',
-        refId: proposalId,
-      },
-    }),
-    prisma.studentDetail.updateMany({
-      where: { userId },
-      data: { xpTotal: { increment: 5 } },
-    }),
-  ])
+    })
+    await creditXP({
+      userId,
+      amount: 5,
+      eventType: 'PROPOSAL_UPVOTED',
+      description: 'Voted on a proposal',
+      refId: proposalId,
+      tx,
+    })
+  })
 
   return { action: 'added' }
 }
@@ -154,6 +141,14 @@ export const updateProposalStatus = async ({ id, status, adminNote, actorId }) =
       resolvedBy: actorId,
       resolvedAt: new Date(),
     },
+  })
+
+  await notify({
+    userId: proposal.authorId,
+    type: 'PROPOSAL_STATUS_UPDATED',
+    title: 'Proposal status updated',
+    body: `Your proposal "${proposal.title}" is now ${status}.`,
+    refId: id,
   })
 
   await writeAuditLog({
@@ -263,22 +258,25 @@ export const updateGrievanceStatus = async ({ id, status, note, actorId }) => {
     })
 
     if (status === 'RESOLVED') {
-      await tx.xPLedger.create({
-        data: {
-          userId: grievance.studentId,
-          amount: 20,
-          eventType: 'GRIEVANCE_RESOLVED',
-          description: 'Grievance resolved',
-          refId: id,
-        },
-      })
-      await tx.studentDetail.updateMany({
-        where: { userId: grievance.studentId },
-        data: { xpTotal: { increment: 20 } },
+      await creditXP({
+        userId: grievance.studentId,
+        amount: 20,
+        eventType: 'GRIEVANCE_RESOLVED',
+        description: 'Grievance resolved',
+        refId: id,
+        tx,
       })
     }
 
     return g
+  })
+
+  await notify({
+    userId: grievance.studentId,
+    type: 'GRIEVANCE_RESOLVED',
+    title: 'Grievance update',
+    body: `Your grievance "${grievance.title}" is now ${status}.`,
+    refId: id,
   })
 
   await writeAuditLog({
@@ -299,13 +297,9 @@ export const updateGrievanceStatus = async ({ id, status, note, actorId }) => {
 export const createPoll = async ({ title, description, options, endsAt, createdBy }) => {
   const poll = await prisma.poll.create({
     data: {
-      title,
-      description,
-      createdBy,
+      title, description, createdBy,
       endsAt: endsAt ? new Date(endsAt) : null,
-      options: {
-        create: options.map((text) => ({ text })),
-      },
+      options: { create: options.map((text) => ({ text })) },
     },
     include: { options: true },
   })
@@ -360,26 +354,21 @@ export const respondToPoll = async ({ pollId, pollOptionId, userId }) => {
   })
   if (!option) throw { status: 404, message: 'Option not found' }
 
-  await prisma.$transaction([
-    prisma.pollResponse.create({ data: { pollId, pollOptionId, userId } }),
-    prisma.pollOption.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.pollResponse.create({ data: { pollId, pollOptionId, userId } })
+    await tx.pollOption.update({
       where: { id: pollOptionId },
       data: { voteCount: { increment: 1 } },
-    }),
-    prisma.xPLedger.create({
-      data: {
-        userId,
-        amount: 5,
-        eventType: 'POLL_PARTICIPATED',
-        description: `Responded to poll: ${poll.title}`,
-        refId: pollId,
-      },
-    }),
-    prisma.studentDetail.updateMany({
-      where: { userId },
-      data: { xpTotal: { increment: 5 } },
-    }),
-  ])
+    })
+    await creditXP({
+      userId,
+      amount: 5,
+      eventType: 'POLL_PARTICIPATED',
+      description: `Responded to poll: ${poll.title}`,
+      refId: pollId,
+      tx,
+    })
+  })
 
   return { message: 'Response recorded' }
 }

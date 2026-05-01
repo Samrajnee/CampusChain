@@ -19,6 +19,11 @@ import ProfilePage from './pages/profile/ProfilePage'
 import CertificatesPage from './pages/certificates/CertificatesPage'
 import LeaderboardPage from './pages/leaderboard/LeaderboardPage'
 import DirectoryPage from './pages/directory/DirectoryPage'
+import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import NotificationsPage from './pages/notifications/NotificationsPage';
+import MentorshipPage from './pages/mentorship/MentorshipPage';
+import ResumePage from './pages/resume/ResumePage';
 
 function FullScreenSpinner() {
   return (
@@ -69,6 +74,12 @@ const router = createBrowserRouter([
       { path: '/certificates', element: <CertificatesPage /> },
       { path: '/leaderboard', element: <LeaderboardPage /> },
       { path: '/directory', element: <DirectoryPage /> },
+      { path: 'announcements', element: <AnnouncementsPage /> },
+      { path: 'admin', element: <AdminDashboardPage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'mentorship', element: <MentorshipPage /> },
+      { path: 'resume', element: <ResumePage /> },
+      
     ],
   },
 
