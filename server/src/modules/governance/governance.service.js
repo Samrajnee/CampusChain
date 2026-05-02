@@ -2,6 +2,8 @@ import { notify } from '../notifications/notifications.service.js';
 import { creditXP } from '../../lib/xp.js';
 import prisma from '../../lib/prisma.js'
 import { writeAuditLog } from '../../lib/audit.js'
+import { sendEmail } from '../../lib/mailer.js';
+import { grievanceUpdateEmail } from '../../lib/emails/templates.js';
 
 // ─────────────────────────────────────────────
 // PROPOSALS
@@ -246,6 +248,26 @@ export const updateGrievanceStatus = async ({ id, status, note, actorId }) => {
         ...(status === 'RESOLVED' && { resolvedAt: new Date() }),
       },
     })
+
+    // Notify student by email if not anonymous
+if (!grievance.isAnonymous) {
+  const student = await prisma.user.findUnique({
+    where: { id: grievance.studentId },
+    select: { email: true, profile: { select: { firstName: true } } },
+  });
+  if (student) {
+    sendEmail({
+      to: student.email,
+      subject: `Grievance update: ${grievance.title}`,
+      html: grievanceUpdateEmail({
+        firstName: student.profile?.firstName ?? 'there',
+        title: grievance.title,
+        status,
+        adminNote: data.adminNote ?? null,
+      }),
+    });
+  }
+}
 
     await tx.grievanceLog.create({
       data: {

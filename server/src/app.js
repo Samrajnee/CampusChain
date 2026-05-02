@@ -120,4 +120,15 @@ if (process.env.NODE_ENV === 'development') {
     await badgeQueue.add('check-badges', { userId: req.params.userId }, { jobId: `manual-${Date.now()}` });
     res.json({ success: true, message: 'Badge check queued' });
   });
+
+  app.post('/api/dev/test-email', async (req, res) => {
+  const { sendEmail } = await import('./lib/mailer.js');
+  const { welcomeEmail } = await import('./lib/emails/templates.js');
+  await sendEmail({
+    to: req.body.to || process.env.SMTP_USER,
+    subject: 'CampusChain test email',
+    html: welcomeEmail({ firstName: 'Test User', email: req.body.to || process.env.SMTP_USER }),
+  });
+  res.json({ success: true, message: 'Test email sent — check your inbox or Mailtrap' });
+});
 }

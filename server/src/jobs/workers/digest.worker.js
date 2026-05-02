@@ -1,5 +1,7 @@
 import prisma from '../../lib/prisma.js';
 import { notify } from '../../modules/notifications/notifications.service.js';
+import { sendEmail } from '../../lib/mailer.js';
+import { weeklyDigestEmail } from '../../lib/emails/templates.js';
 
 /**
  * Processor function for the weekly digest job.
@@ -112,6 +114,25 @@ export async function digestProcessor(job) {
       // Per-student failure must not stop the whole run
       console.error(`[Digest] Failed for student ${student.id}:`, err.message);
     }
+
+    // Also send digest email
+const studentUser = await prisma.user.findUnique({
+  where: { id: student.id },
+  select: { email: true, profile: { select: { firstName: true } } },
+});
+if (studentUser) {
+  sendEmail({
+    to: studentUser.email,
+    subject: 'Your weekly CampusChain summary',
+    html: weeklyDigestEmail({
+      firstName: studentUser.profile?.firstName ?? 'there',
+      xpGained,
+      upcomingEvents,
+      openElections,
+      recentAnnouncements,
+    }),
+  });
+}
   }
 
   console.log(`[Digest] Done — notified ${notified} students`);

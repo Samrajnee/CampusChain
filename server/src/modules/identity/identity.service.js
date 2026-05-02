@@ -4,6 +4,8 @@ import prisma from '../../lib/prisma.js'
 import { writeAuditLog } from '../../lib/audit.js'
 import crypto from 'crypto'
 import QRCode from 'qrcode'
+import { sendEmail } from '../../lib/mailer.js';
+import { certificateIssuedEmail, badgeEarnedEmail } from '../../lib/emails/templates.js';
 
 // ─────────────────────────────────────────────
 // CERTIFICATES
@@ -46,6 +48,25 @@ export const issueCertificate = async ({ userId, title, description, type, issue
       },
       include: { user: { include: { profile: true } } },
     })
+
+    // Fetch user email for notification
+const recipient = await prisma.user.findUnique({
+  where: { id: data.userId },
+  select: { email: true, profile: { select: { firstName: true } } },
+});
+if (recipient) {
+  sendEmail({
+    to: recipient.email,
+    subject: `Certificate issued: ${data.title}`,
+    html: certificateIssuedEmail({
+      firstName: recipient.profile?.firstName ?? 'there',
+      title: certificate.title,
+      issuedBy: certificate.issuedBy,
+      type: certificate.type,
+      uniqueCode: certificate.uniqueCode,
+    }),
+  });
+}
 
     await creditXP({
       userId,
@@ -164,6 +185,23 @@ export const awardBadge = async ({ userId, badgeId, awardedBy }) => {
 
     return ub
   })
+
+  const recipient = await prisma.user.findUnique({
+  where: { id: data.userId },
+  select: { email: true, profile: { select: { firstName: true } } },
+});
+if (recipient) {
+  sendEmail({
+    to: recipient.email,
+    subject: `You earned the "${badge.name}" badge`,
+    html: badgeEarnedEmail({
+      firstName: recipient.profile?.firstName ?? 'there',
+      badgeName: badge.name,
+      badgeCategory: badge.category,
+      xpReward: badge.xpReward,
+    }),
+  });
+}
 
   await notify({
     userId,

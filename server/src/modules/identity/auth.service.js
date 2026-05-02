@@ -3,6 +3,8 @@ import { hashPassword, comparePassword } from '../../lib/hash.js'
 import { signToken } from '../../lib/jwt.js'
 import { writeAuditLog } from '../../lib/audit.js'
 import crypto from 'crypto'
+import { sendEmail } from '../../lib/mailer.js';
+import { welcomeEmail, passwordResetEmail } from '../../lib/emails/templates.js';
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -60,6 +62,16 @@ export const registerUser = async ({ email, password, firstName, lastName, role 
         },
       })
     }
+
+    // Send welcome email — fire and forget
+sendEmail({
+  to: user.email,
+  subject: 'Welcome to CampusChain',
+  html: welcomeEmail({
+    firstName: data.firstName ?? 'there',
+    email: user.email,
+  }),
+});
 
     return newUser
   })
@@ -189,7 +201,17 @@ export const forgotPassword = async (email) => {
   })
 
   // TODO: send email with reset link — wire up after email service is configured
-  console.log(`Password reset token for ${email}: ${token}`)
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+sendEmail({
+  to: user.email,
+  subject: 'Reset your CampusChain password',
+  html: passwordResetEmail({
+    firstName: user.profile?.firstName ?? 'there',
+    resetUrl,
+  }),
+
+});
+
 }
 
 export const resetPassword = async ({ token, password }) => {

@@ -2,6 +2,8 @@ import prisma from '../../lib/prisma.js';
 import { creditXP } from '../../lib/xp.js';
 import { notify } from '../notifications/notifications.service.js';
 import { writeAuditLog } from '../../lib/audit.js';
+import { sendEmail } from '../../lib/mailer.js';
+import { mentorshipAcceptedEmail } from '../../lib/emails/templates.js';
 
 // ── Create a mentorship request (student) ─────────────────────────────────────
 
@@ -175,6 +177,23 @@ export async function acceptRequest({ id, mentorId, ipAddress }) {
     body: `${updated.mentor.profile?.firstName ?? 'Someone'} ${updated.mentor.profile?.lastName ?? ''} has accepted your mentorship request on "${mentorship.topic}".`,
     refId: id,
   });
+
+  // Also send an email to the mentee
+const mentee = await prisma.user.findUnique({
+  where: { id: mentorship.menteeId },
+  select: { email: true, profile: { select: { firstName: true } } },
+});
+if (mentee) {
+  sendEmail({
+    to: mentee.email,
+    subject: `Mentorship accepted: ${mentorship.topic}`,
+    html: mentorshipAcceptedEmail({
+      firstName: mentee.profile?.firstName ?? 'there',
+      topic: mentorship.topic,
+      mentorName: `${updated.mentor.profile?.firstName ?? ''} ${updated.mentor.profile?.lastName ?? ''}`.trim(),
+    }),
+  });
+}
 
   await writeAuditLog({
     actorId: mentorId,
