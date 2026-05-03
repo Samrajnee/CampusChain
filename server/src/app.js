@@ -8,6 +8,8 @@ import { verifyToken } from './lib/jwt.js';
 import { sendError } from './lib/apiResponse.js';
 import errorHandler from './middleware/errorHandler.js';
 import { startJobs } from './jobs/index.js';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 // Module routes
 import authRoutes from './modules/identity/auth.routes.js';
@@ -25,6 +27,55 @@ import resumeRoutes from './modules/resume/resume.routes.js';
 import { injectIO } from './modules/notifications/notifications.service.js';
 
 const app = express();
+app.set('trust proxy', process.env.TRUST_PROXY === '1' ? 1 : 0);
+
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false, // disabled — frontend is on a separate origin
+}));
+
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+
+// Auth routes — tight limit, brute force protection
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,                   // 20 attempts per IP per 15 min
+  message: {
+    success: false,
+    message: 'Too many attempts from this IP. Please try again in 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General API — loose limit, just prevents scraping
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,            // 200 requests per IP per minute
+  message: {
+    success: false,
+    message: 'Too many requests. Please slow down.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Resume/PDF — expensive endpoint, tightest limit
+const pdfLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,              // 5 PDF generations per minute per IP
+  message: {
+    success: false,
+    message: 'Too many resume requests. Please wait a moment.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general limiter to all API routes
+app.use('/api', apiLimiter);
+
 const httpServer = createServer(app);
 
 // ── Core middleware first ─────────────────────────────────────────────────────
@@ -105,6 +156,13 @@ io.on('connection', (socket) => {
 injectIO(io);
 
 // ── Protected routes ──────────────────────────────────────────────────────────
+// Apply auth limiter specifically to login and register
+app.use('/api/auth/login',    authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+
+// Apply PDF limiter to resume generation
+app.use('/api/resume', pdfLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/elections', electionsRoutes);
@@ -116,6 +174,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mentorship', mentorshipRoutes);
 app.use('/api/resume', resumeRoutes);
+
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 
