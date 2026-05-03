@@ -1,3 +1,4 @@
+console.log('REDIS URL:', process.env.UPSTASH_REDIS_URL)
 import { createQueue } from '../lib/queue.js';
 
 // One queue per concern — keeps job types cleanly separated

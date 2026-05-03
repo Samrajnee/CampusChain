@@ -35,7 +35,7 @@ export const createProposal = async ({ authorId, title, body, isAnonymous }) => 
 
 export const listProposals = async (userId) => {
   const proposals = await prisma.proposal.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: { equals: null } },
     include: {
       author: { include: { profile: true } },
       votes: true,
@@ -55,7 +55,7 @@ export const listProposals = async (userId) => {
 
 export const getProposal = async (id, userId) => {
   const proposal = await prisma.proposal.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: { equals: null } },
     include: {
       author: { include: { profile: true } },
       votes: true,
@@ -73,7 +73,7 @@ export const getProposal = async (id, userId) => {
 
 export const voteOnProposal = async ({ proposalId, userId, isUpvote }) => {
   const proposal = await prisma.proposal.findFirst({
-    where: { id: proposalId, deletedAt: null },
+    where: { id: proposalId, deletedAt: { equals: null } },
   })
   if (!proposal) throw { status: 404, message: 'Proposal not found' }
   if (proposal.status !== 'OPEN') throw { status: 400, message: 'Voting is closed for this proposal' }
@@ -131,7 +131,7 @@ export const voteOnProposal = async ({ proposalId, userId, isUpvote }) => {
 
 export const updateProposalStatus = async ({ id, status, adminNote, actorId }) => {
   const proposal = await prisma.proposal.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: { equals: null } },
   })
   if (!proposal) throw { status: 404, message: 'Proposal not found' }
 

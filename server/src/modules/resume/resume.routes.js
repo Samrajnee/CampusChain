@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import PDFDocument from 'pdfkit';
 import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
+import authorize from '../../middleware/authorize.js';
 import prisma from '../../lib/prisma.js';
 
 const router = Router();

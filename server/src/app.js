@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -26,40 +27,7 @@ import { injectIO } from './modules/notifications/notifications.service.js';
 const app = express();
 const httpServer = createServer(app);
 
-// ── Socket.IO setup ───────────────────────────────────────────────────────────
-
-const io = new SocketIO(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-  },
-});
-
-// Socket.IO auth middleware — validate JWT on connect
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
-  if (!token) return next(new Error('No token'));
-
-  const payload = verifyToken(token);
-  if (!payload) return next(new Error('Invalid token'));
-
-  socket.userId = payload.id;
-  next();
-});
-
-// Join personal room on connect
-io.on('connection', (socket) => {
-  socket.join(`user:${socket.userId}`);
-
-  socket.on('disconnect', () => {
-    socket.leave(`user:${socket.userId}`);
-  });
-});
-
-// Inject IO into notification service so notify() can push in real time
-injectIO(io);
-
-// ── Express middleware ────────────────────────────────────────────────────────
+// ── Core middleware first ─────────────────────────────────────────────────────
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -68,40 +36,8 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// ── DEV ONLY routes (no auth, must be before protected routes) ────────────────
 
-app.use('/api/auth', authRoutes);
-app.use('/api/elections', electionsRoutes);
-app.use('/api', governanceRoutes);
-app.use('/api', campusOpsRoutes);
-app.use('/api', identityRoutes);
-app.use('/api/announcements', announcementsRoutes);
-app.use('/api/notifications', notificationsRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/mentorship', mentorshipRoutes);
-app.use('/api/resume', resumeRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'CampusChain API is running' });
-});
-
-// ── Error handler ─────────────────────────────────────────────────────────────
-
-app.use(errorHandler);
-
-// ── Start ─────────────────────────────────────────────────────────────────────
-
-const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, async () => {
-  console.log(`CampusChain server running on port ${PORT}`);
-  await startJobs();
-});
-
-
-export default app;
-
-// DEV ONLY — manual job trigger for testing. Remove before production.
 if (process.env.NODE_ENV === 'development') {
   app.post('/api/dev/trigger-digest', async (req, res) => {
     const { digestQueue } = await import('./jobs/queues.js');
@@ -122,13 +58,75 @@ if (process.env.NODE_ENV === 'development') {
   });
 
   app.post('/api/dev/test-email', async (req, res) => {
-  const { sendEmail } = await import('./lib/mailer.js');
-  const { welcomeEmail } = await import('./lib/emails/templates.js');
-  await sendEmail({
-    to: req.body.to || process.env.SMTP_USER,
-    subject: 'CampusChain test email',
-    html: welcomeEmail({ firstName: 'Test User', email: req.body.to || process.env.SMTP_USER }),
+    const { sendEmail } = await import('./lib/mailer.js');
+    const { welcomeEmail } = await import('./lib/emails/templates.js');
+    await sendEmail({
+      to: req.body.to || process.env.SMTP_USER,
+      subject: 'CampusChain test email',
+      html: welcomeEmail({ firstName: 'Test User', email: req.body.to || process.env.SMTP_USER }),
+    });
+    res.json({ success: true, message: 'Test email sent — check your Mailtrap inbox' });
   });
-  res.json({ success: true, message: 'Test email sent — check your inbox or Mailtrap' });
-});
 }
+
+// ── Health check ──────────────────────────────────────────────────────────────
+
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, message: 'CampusChain API is running' });
+});
+
+// ── Socket.IO setup ───────────────────────────────────────────────────────────
+
+const io = new SocketIO(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  },
+});
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error('No token'));
+
+  const payload = verifyToken(token);
+  if (!payload) return next(new Error('Invalid token'));
+
+  socket.userId = payload.id;
+  next();
+});
+
+io.on('connection', (socket) => {
+  socket.join(`user:${socket.userId}`);
+  socket.on('disconnect', () => {
+    socket.leave(`user:${socket.userId}`);
+  });
+});
+
+injectIO(io);
+
+// ── Protected routes ──────────────────────────────────────────────────────────
+
+app.use('/api/auth', authRoutes);
+app.use('/api/elections', electionsRoutes);
+app.use('/api', governanceRoutes);
+app.use('/api', campusOpsRoutes);
+app.use('/api', identityRoutes);
+app.use('/api/announcements', announcementsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/mentorship', mentorshipRoutes);
+app.use('/api/resume', resumeRoutes);
+
+// ── Error handler ─────────────────────────────────────────────────────────────
+
+app.use(errorHandler);
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+
+const PORT = process.env.PORT || 5000;
+httpServer.listen(PORT, async () => {
+  console.log(`CampusChain server running on port ${PORT}`);
+  await startJobs();
+});
+
+export default app;

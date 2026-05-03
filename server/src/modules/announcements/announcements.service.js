@@ -10,19 +10,19 @@ export async function listAnnouncements({ userId, role, department, year, page =
     AND: [
       {
         OR: [
-          { targetRole: null },
+          { targetRole: {_equals: null } },
           { targetRole: role },
         ],
       },
       {
         OR: [
-          { targetDept: null },
+          { targetDept: {_equals: null } },
           { targetDept: department ?? undefined },
         ],
       },
       {
         OR: [
-          { targetYear: null },
+          { targetYear: {_equals: null } },
           { targetYear: year ?? undefined },
         ],
       },
@@ -248,9 +248,9 @@ export async function getUnreadCount({ userId, role, department, year }) {
   const where = {
     deletedAt: null,
     AND: [
-      { OR: [{ targetRole: null }, { targetRole: role }] },
-      { OR: [{ targetDept: null }, { targetDept: department ?? undefined }] },
-      { OR: [{ targetYear: null }, { targetYear: year ?? undefined }] },
+      { OR: [{ targetRole: {_equals: null } }, { targetRole: role }] },
+      { OR: [{ targetDept: {_equals: null } }, { targetDept: department ?? undefined }] },
+      { OR: [{ targetYear: {_equals: null } }, { targetYear: year ?? undefined }] },
     ],
     reads: { none: { userId } },
   };
@@ -258,3 +258,4 @@ export async function getUnreadCount({ userId, role, department, year }) {
   const count = await prisma.announcement.count({ where });
   return count;
 }
+

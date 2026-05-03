@@ -1,99 +1,126 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const ADMIN_ROLES = [
-  'TEACHER',
-  'HOD',
-  'LAB_ASSISTANT',
-  'LIBRARIAN',
-  'PRINCIPAL',
-  'SUPER_ADMIN',
-];
+const ADMIN_ROLES = ['TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL', 'SUPER_ADMIN'];
 
 const studentNav = [
-  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Dashboard',     to: '/dashboard' },
   { label: 'Announcements', to: '/announcements' },
-  { label: 'Elections', to: '/elections' },
-  { label: 'Proposals', to: '/proposals' },
-  { label: 'Grievances', to: '/grievances' },
-  { label: 'Polls', to: '/polls' },
-  { label: 'Events', to: '/events' },
-  { label: 'Clubs', to: '/clubs' },
-  { label: 'Certificates', to: '/certificates' },
-  { label: 'Leaderboard', to: '/leaderboard' },
-  { label: 'Directory', to: '/directory' },
-  { label: 'Profile', to: '/profile' },
+  { label: 'Elections',     to: '/elections' },
+  { label: 'Proposals',     to: '/proposals' },
+  { label: 'Grievances',    to: '/grievances' },
+  { label: 'Polls',         to: '/polls' },
+  { label: 'Events',        to: '/events' },
+  { label: 'Clubs',         to: '/clubs' },
+  { label: 'Mentorship',    to: '/mentorship' },
+  { label: 'Certificates',  to: '/certificates' },
+  { label: 'Leaderboard',   to: '/leaderboard' },
+  { label: 'Directory',     to: '/directory' },
   { label: 'Notifications', to: '/notifications' },
-  { label: 'Mentorship', to: '/mentorship' },
-  { label: 'Resume', to: '/resume' },
-  
+  { label: 'Profile',       to: '/profile' },
+  { label: 'Resume',        to: '/resume' },
 ];
 
 const adminNav = [
-  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Dashboard',     to: '/dashboard' },
+  { label: 'Admin',         to: '/admin' },
   { label: 'Announcements', to: '/announcements' },
-  { label: 'Admin', to: '/admin' },
-  { label: 'Dashboard', to: '/dashboard' },
-  { label: 'Announcements', to: '/announcements' },
-  { label: 'Elections', to: '/elections' },
-  { label: 'Proposals', to: '/proposals' },
-  { label: 'Grievances', to: '/grievances' },
-  { label: 'Polls', to: '/polls' },
-  { label: 'Events', to: '/events' },
-  { label: 'Clubs', to: '/clubs' },
-  { label: 'Certificates', to: '/certificates' },
-  { label: 'Leaderboard', to: '/leaderboard' },
-  { label: 'Directory', to: '/directory' },
-  { label: 'Profile', to: '/profile' },
+  { label: 'Elections',     to: '/elections' },
+  { label: 'Proposals',     to: '/proposals' },
+  { label: 'Grievances',    to: '/grievances' },
+  { label: 'Polls',         to: '/polls' },
+  { label: 'Events',        to: '/events' },
+  { label: 'Clubs',         to: '/clubs' },
+  { label: 'Mentorship',    to: '/mentorship' },
+  { label: 'Certificates',  to: '/certificates' },
+  { label: 'Leaderboard',   to: '/leaderboard' },
+  { label: 'Directory',     to: '/directory' },
   { label: 'Notifications', to: '/notifications' },
-  { label: 'Mentorship', to: '/mentorship' },
-  { label: 'Resume', to: '/resume' },
-
+  { label: 'Profile',       to: '/profile' },
+  { label: 'Resume',        to: '/resume' },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-
   const isAdmin = ADMIN_ROLES.includes(user?.role);
   const navItems = isAdmin ? adminNav : studentNav;
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     await logout();
     navigate('/login');
-  };
+  }
+
+  const fullName = user?.profile?.firstName
+    ? `${user.profile.firstName} ${user.profile.lastName}`
+    : user?.email;
 
   return (
-    <aside className="w-56 shrink-0 h-screen sticky top-0 bg-white border-r border-gray-100 flex flex-col">
+    <aside
+      style={{
+        background: 'linear-gradient(180deg, #1E2D4A 0%, #0B1120 100%)',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+      }}
+      className="w-60 shrink-0 h-screen flex flex-col"
+    >
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-gray-100">
-        <span className="text-base font-bold text-indigo-600 tracking-tight">
-          CampusChain
-        </span>
+      <div className="px-6 pt-8 pb-6">
+        <p
+          className="text-xl font-display text-white"
+          style={{ fontWeight: 300, letterSpacing: '-0.02em' }}
+        >
+          Campus
+          <span style={{ color: '#C9A96E' }}>Chain</span>
+        </p>
+        <p
+          className="text-xs mt-0.5"
+          style={{ color: 'rgba(154,163,186,0.7)', letterSpacing: '0.08em' }}
+        >
+          ACADEMIC PLATFORM
+        </p>
       </div>
 
-      {/* User info */}
-      <div className="px-5 py-4 border-b border-gray-100">
-        <p className="text-xs font-semibold text-gray-900 truncate">
-          {user?.profile?.firstName
-            ? `${user.profile.firstName} ${user.profile.lastName}`
-            : user?.email}
+      {/* User chip */}
+      <div
+        className="mx-4 mb-5 px-3 py-3 rounded-xl"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <p className="text-sm font-sans text-white font-medium truncate leading-snug">
+          {fullName}
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">{user?.role}</p>
+        <p
+          className="text-xs mt-0.5 truncate"
+          style={{ color: '#C9A96E', letterSpacing: '0.04em' }}
+        >
+          {user?.role}
+        </p>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 flex flex-col gap-0.5 pb-4">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `block px-3 py-2 rounded-lg text-sm transition-colors ${
+              `block px-3 py-2 rounded-lg text-sm font-sans transition-all duration-150 ${
                 isActive
-                  ? 'bg-indigo-50 text-indigo-600 font-medium'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'text-white font-medium'
+                  : 'font-normal hover:text-white'
               }`
+            }
+            style={({ isActive }) =>
+              isActive
+                ? {
+                    background: 'rgba(201,169,110,0.15)',
+                    color: '#E8D5AA',
+                    borderLeft: '2px solid #C9A96E',
+                    paddingLeft: '10px',
+                  }
+                : { color: 'rgba(154,163,186,0.8)' }
             }
           >
             {item.label}
@@ -101,11 +128,23 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="px-3 py-4 border-t border-gray-100">
+      {/* Sign out */}
+      <div
+        className="px-3 py-4"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <button
           onClick={handleLogout}
-          className="w-full px-3 py-2 text-sm text-left text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          className="w-full px-3 py-2 text-sm font-sans text-left rounded-lg transition-all duration-150"
+          style={{ color: 'rgba(154,163,186,0.6)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#F87171';
+            e.currentTarget.style.background = 'rgba(248,113,113,0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'rgba(154,163,186,0.6)';
+            e.currentTarget.style.background = 'transparent';
+          }}
         >
           Sign out
         </button>

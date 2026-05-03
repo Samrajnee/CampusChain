@@ -1,41 +1,46 @@
-const styles = {
-  DRAFT:      'bg-gray-100 text-gray-500',
-  OPEN:       'bg-green-100 text-green-700',
-  CLOSED:     'bg-slate-100 text-slate-600',
-  CANCELLED:  'bg-red-100 text-red-500',
-  SUBMITTED:  'bg-sky-100 text-sky-700',
-  UNDER_REVIEW: 'bg-amber-100 text-amber-700',
-  ESCALATED:  'bg-orange-100 text-orange-700',
-  RESOLVED:   'bg-green-100 text-green-700',
-  ACCEPTED:   'bg-green-100 text-green-700',
-  REJECTED:   'bg-red-100 text-red-500',
-  PENDING:    'bg-yellow-100 text-yellow-700',
-  ACTIVE:     'bg-green-100 text-green-700',
-  UPCOMING:   'bg-sky-100 text-sky-700',
-  COMPLETED:  'bg-slate-100 text-slate-600',
-}
-
-const labels = {
-  DRAFT: 'Draft',
-  OPEN: 'Open',
-  CLOSED: 'Closed',
-  CANCELLED: 'Cancelled',
-  SUBMITTED: 'Submitted',
-  UNDER_REVIEW: 'Under Review',
-  ESCALATED: 'Escalated',
-  RESOLVED: 'Resolved',
-  ACCEPTED: 'Accepted',
-  REJECTED: 'Rejected',
-  PENDING: 'Pending',
-  ACTIVE: 'Active',
-  UPCOMING: 'Upcoming',
-  COMPLETED: 'Completed',
-}
+const STATUS_MAP = {
+  // Elections
+  DRAFT:          { bg: '#F1F5F9', color: '#64748B' },
+  OPEN:           { bg: '#F0FDF4', color: '#15803D' },
+  CLOSED:         { bg: '#F1F5F9', color: '#64748B' },
+  CANCELLED:      { bg: '#FEF2F2', color: '#B91C1C' },
+  // Proposals / Grievances
+  UNDER_REVIEW:   { bg: '#FFFBEB', color: '#92400E' },
+  ACCEPTED:       { bg: '#F0FDF4', color: '#15803D' },
+  REJECTED:       { bg: '#FEF2F2', color: '#B91C1C' },
+  ESCALATED:      { bg: '#FFF1F2', color: '#BE123C' },
+  RESOLVED:       { bg: '#F0FDF4', color: '#15803D' },
+  SUBMITTED:      { bg: '#EFF6FF', color: '#1D4ED8' },
+  // Events
+  UPCOMING:       { bg: '#EFF6FF', color: '#1D4ED8' },
+  ONGOING:        { bg: '#F0FDF4', color: '#15803D' },
+  COMPLETED:      { bg: '#F1F5F9', color: '#64748B' },
+  // Clubs
+  ACTIVE:         { bg: '#F0FDF4', color: '#15803D' },
+  INACTIVE:       { bg: '#F1F5F9', color: '#64748B' },
+  PENDING_APPROVAL: { bg: '#FFFBEB', color: '#92400E' },
+  // Budget
+  PENDING:        { bg: '#FFFBEB', color: '#92400E' },
+  APPROVED:       { bg: '#F0FDF4', color: '#15803D' },
+  DISBURSED:      { bg: '#F5F3FF', color: '#6D28D9' },
+  // Mentorship
+  ACTIVE_M:       { bg: '#F0FDF4', color: '#15803D' },
+};
 
 export default function StatusBadge({ status }) {
+  const s = STATUS_MAP[status] ?? { bg: '#F1F5F9', color: '#64748B' };
+  const label = status?.replace(/_/g, ' ') ?? '';
+
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-500'}`}>
-      {labels[status] || status}
+    <span
+      className="inline-flex items-center text-xs font-sans font-semibold px-2.5 py-1 rounded-full"
+      style={{
+        background: s.bg,
+        color: s.color,
+        letterSpacing: '0.03em',
+      }}
+    >
+      {label}
     </span>
-  )
+  );
 }

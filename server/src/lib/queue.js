@@ -2,8 +2,9 @@ import { Queue, Worker, QueueEvents } from 'bullmq';
 import IORedis from 'ioredis';
 
 // Single Redis connection for all BullMQ queues
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const connection = new IORedis(process.env.UPSTASH_REDIS_URL, {
   maxRetriesPerRequest: null, // required by BullMQ
+  tls: {}, // required for Upstash (rediss:// protocol)
 });
 
 connection.on('error', (err) => {
@@ -14,10 +15,6 @@ connection.on('connect', () => {
   console.log('[Queue] Redis connected');
 });
 
-/**
- * Create or retrieve a named BullMQ queue.
- * All queues share the same Redis connection.
- */
 export function createQueue(name, opts = {}) {
   return new Queue(name, {
     connection,
@@ -31,9 +28,6 @@ export function createQueue(name, opts = {}) {
   });
 }
 
-/**
- * Create a BullMQ Worker for a named queue.
- */
 export function createWorker(name, processor, opts = {}) {
   const worker = new Worker(name, processor, {
     connection,

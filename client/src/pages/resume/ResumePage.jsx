@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { downloadResume } from '../../api/resume';
-import { getProfile } from '../../api/identity';
+import { getPublicProfileApi } from '../../api/identity';
 import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
 

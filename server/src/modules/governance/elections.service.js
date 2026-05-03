@@ -35,7 +35,7 @@ export const createElection = async ({ title, description, startsAt, endsAt, isA
 
 export const listElections = async ({ userId, role }) => {
   const elections = await prisma.election.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: { equals: null } },
     include: {
       candidates: {
         include: {
@@ -70,7 +70,7 @@ export const listElections = async ({ userId, role }) => {
 
 export const getElection = async (id, userId) => {
   const election = await prisma.election.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: { equals: null } },
     include: {
       candidates: {
         include: {
@@ -102,7 +102,7 @@ export const getElection = async (id, userId) => {
 
 export const addCandidate = async ({ electionId, userId, position, manifesto, actorId }) => {
   const election = await prisma.election.findFirst({
-    where: { id: electionId, deletedAt: null },
+    where: { id: electionId, deletedAt: { equals: null } },
   })
   if (!election) throw { status: 404, message: 'Election not found' }
   if (election.status !== 'DRAFT') throw { status: 400, message: 'Cannot add candidates after election has started' }
@@ -132,7 +132,7 @@ export const addCandidate = async ({ electionId, userId, position, manifesto, ac
 
 export const updateElectionStatus = async ({ id, status, actorId }) => {
   const election = await prisma.election.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: { equals: null } },
   })
   if (!election) throw { status: 404, message: 'Election not found' }
 
@@ -214,7 +214,7 @@ const checkEligibility = async (election, userId) => {
 
 export const castVote = async ({ electionId, candidateId, userId }) => {
   const election = await prisma.election.findFirst({
-    where: { id: electionId, deletedAt: null },
+    where: { id: electionId, deletedAt: { equals: null } },
   })
   if (!election) throw { status: 404, message: 'Election not found' }
   if (election.status !== 'OPEN') throw { status: 400, message: 'This election is not currently open for voting' }
@@ -317,7 +317,7 @@ const castAnonymousVote = async ({ election, candidateId, userId }) => {
 
 export const getResults = async (electionId) => {
   const election = await prisma.election.findFirst({
-    where: { id: electionId, deletedAt: null },
+    where: { id: electionId, deletedAt: { equals: null } },
     include: {
       candidates: {
         include: { user: { include: { profile: true, studentDetail: true } } },
@@ -343,7 +343,7 @@ export const getResults = async (electionId) => {
 // ── Delete election (soft) ────────────────────────────────
 
 export const deleteElection = async (id, actorId) => {
-  const election = await prisma.election.findFirst({ where: { id, deletedAt: null } })
+  const election = await prisma.election.findFirst({ where: { id, deletedAt: { equals: null } } })
   if (!election) throw { status: 404, message: 'Election not found' }
   if (election.status === 'OPEN') throw { status: 400, message: 'Cannot delete an active election' }
 
