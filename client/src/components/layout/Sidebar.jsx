@@ -1,7 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSidebar } from '../../context/SidebarContext';
 
-const ADMIN_ROLES = ['TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL', 'SUPER_ADMIN'];
+const ADMIN_ROLES = [
+  'TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL', 'SUPER_ADMIN',
+];
 
 const studentNav = [
   { label: 'Dashboard',     to: '/dashboard' },
@@ -42,47 +45,66 @@ const adminNav = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const isAdmin = ADMIN_ROLES.includes(user?.role);
+  const { close }        = useSidebar();
+  const navigate         = useNavigate();
+
+  const isAdmin  = ADMIN_ROLES.includes(user?.role);
   const navItems = isAdmin ? adminNav : studentNav;
+
+  const fullName = user?.profile?.firstName
+    ? `${user.profile.firstName} ${user.profile.lastName}`
+    : user?.email;
 
   async function handleLogout() {
     await logout();
     navigate('/login');
   }
 
-  const fullName = user?.profile?.firstName
-    ? `${user.profile.firstName} ${user.profile.lastName}`
-    : user?.email;
-
   return (
     <aside
+      className="w-60 h-screen flex flex-col"
       style={{
         background: 'linear-gradient(180deg, #1E2D4A 0%, #0B1120 100%)',
         borderRight: '1px solid rgba(255,255,255,0.06)',
       }}
-      className="w-60 shrink-0 h-screen flex flex-col"
     >
-      {/* Brand */}
-      <div className="px-6 pt-8 pb-6">
+      {/* ── Brand + mobile close ───────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between px-6 pt-7 pb-5"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <p
-          className="text-xl font-display text-white"
+          className="font-display text-xl text-white"
           style={{ fontWeight: 300, letterSpacing: '-0.02em' }}
         >
-          Campus
-          <span style={{ color: '#C9A96E' }}>Chain</span>
+          Campus<span style={{ color: '#C9A96E' }}>Chain</span>
         </p>
-        <p
-          className="text-xs mt-0.5"
-          style={{ color: 'rgba(154,163,186,0.7)', letterSpacing: '0.08em' }}
+
+        {/* Close button — mobile only */}
+        <button
+          onClick={close}
+          className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150"
+          style={{ color: 'rgba(154,163,186,0.6)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'white';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'rgba(154,163,186,0.6)';
+            e.currentTarget.style.background = 'transparent';
+          }}
+          aria-label="Close menu"
         >
-          ACADEMIC PLATFORM
-        </p>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      {/* User chip */}
+      {/* ── User chip ──────────────────────────────────────────────────── */}
       <div
-        className="mx-4 mb-5 px-3 py-3 rounded-xl"
+        className="mx-4 mt-4 mb-4 px-3 py-3 rounded-xl"
         style={{
           background: 'rgba(255,255,255,0.05)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -92,43 +114,54 @@ export default function Sidebar() {
           {fullName}
         </p>
         <p
-          className="text-xs mt-0.5 truncate"
+          className="text-xs mt-0.5 truncate font-sans"
           style={{ color: '#C9A96E', letterSpacing: '0.04em' }}
         >
           {user?.role}
         </p>
       </div>
 
-      {/* Nav */}
+      {/* ── Nav ───────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-3 flex flex-col gap-0.5 pb-4">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) =>
-              `block px-3 py-2 rounded-lg text-sm font-sans transition-all duration-150 ${
-                isActive
-                  ? 'text-white font-medium'
-                  : 'font-normal hover:text-white'
-              }`
-            }
+            className="block rounded-lg text-sm font-sans transition-all duration-150"
             style={({ isActive }) =>
               isActive
                 ? {
                     background: 'rgba(201,169,110,0.15)',
                     color: '#E8D5AA',
                     borderLeft: '2px solid #C9A96E',
-                    paddingLeft: '10px',
+                    padding: '8px 12px 8px 10px',
+                    fontWeight: 500,
                   }
-                : { color: 'rgba(154,163,186,0.8)' }
+                : {
+                    color: 'rgba(154,163,186,0.8)',
+                    padding: '8px 12px',
+                    fontWeight: 400,
+                  }
             }
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.style.borderLeft) {
+                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.style.borderLeft) {
+                e.currentTarget.style.color = 'rgba(154,163,186,0.8)';
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
           >
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      {/* Sign out */}
+      {/* ── Sign out ───────────────────────────────────────────────────── */}
       <div
         className="px-3 py-4"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
