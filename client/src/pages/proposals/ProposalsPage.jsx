@@ -1,198 +1,220 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listProposalsApi, createProposalApi, voteProposalApi } from '../../api/governance'
-import { useAuth } from '../../context/AuthContext'
-import StatusBadge from '../../components/ui/StatusBadge'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import Alert from '../../components/ui/Alert'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
+import {
+  getProposals, createProposal, voteOnProposal,
+} from '../../api/governance';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import SectionLabel from '../../components/ui/SectionLabel';
+import StatusBadge from '../../components/ui/StatusBadge';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Alert from '../../components/ui/Alert';
+import Empty from '../../components/ui/Empty';
+import Spinner from '../../components/ui/Skeleton';
 
-const ADMIN_ROLES = ['TEACHER', 'HOD', 'PRINCIPAL', 'SUPER_ADMIN']
+function fmt(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
 
 export default function ProposalsPage() {
-  const { user } = useAuth()
-  const isAdmin = ADMIN_ROLES.includes(user?.role)
-  const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [filter, setFilter] = useState('ALL')
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: '', body: '', isAnonymous: false });
+  const [error, setError] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['proposals'],
-    queryFn: () => listProposalsApi().then((r) => r.data.data.proposals),
-  })
+    queryFn: getProposals,
+  });
 
-  const proposals = data ?? []
-  const filtered = filter === 'ALL' ? proposals : proposals.filter((p) => p.status === filter)
+  const proposals = data?.data?.proposals ?? [];
+
+  const createMut = useMutation({
+    mutationFn: createProposal,
+    onSuccess: () => {
+      qc.invalidateQueries(['proposals']);
+      setShowForm(false);
+      setForm({ title: '', body: '', isAnonymous: false });
+    },
+    onError: (e) => setError(e.response?.data?.message || 'Failed to submit'),
+  });
+
+  const voteMut = useMutation({
+    mutationFn: ({ id, isUpvote }) => voteOnProposal(id, { isUpvote }),
+    onSuccess: () => qc.invalidateQueries(['proposals']),
+  });
 
   return (
-    <div className="max-w-3xl flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Proposals</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Submit ideas and vote on what matters</p>
-        </div>
-        <Button onClick={() => setShowForm(true)}>New proposal</Button>
-      </div>
+    <div className="max-w-3xl mx-auto">
+      <PageHeader
+        title="Proposals"
+        subtitle="Submit ideas and vote on what matters to the campus"
+        action={
+          <Button variant="primary" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? 'Cancel' : 'New proposal'}
+          </Button>
+        }
+      />
 
-      <div className="flex gap-2 flex-wrap">
-        {['ALL', 'OPEN', 'UNDER_REVIEW', 'ACCEPTED', 'REJECTED'].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition
-              ${filter === f ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-indigo-200'}`}
-          >
-            {f === 'ALL' ? 'All' : f.replace('_', ' ').charAt(0) + f.replace('_', ' ').slice(1).toLowerCase()}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No proposals found.</p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map((proposal) => (
-            <ProposalCard
-              key={proposal.id}
-              proposal={proposal}
-              isAdmin={isAdmin}
-              currentUserId={user?.id}
-              onVote={() => qc.invalidateQueries(['proposals'])}
+      {/* Create form */}
+      {showForm && (
+        <Card className="p-6 mb-6 animate-fade-up">
+          <p className="text-sm font-sans font-semibold text-t1 mb-4">
+            Submit a proposal
+          </p>
+          <Alert type="error" message={error} />
+          <div className="flex flex-col gap-4">
+            <Input
+              label="Title"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="What are you proposing?"
             />
+            <div>
+              <label className="block text-xs font-sans font-medium mb-1.5 uppercase tracking-widest"
+                style={{ color: 'var(--text-3)' }}>
+                Description
+              </label>
+              <textarea
+                rows={4}
+                value={form.body}
+                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                placeholder="Describe your proposal in detail..."
+                className="w-full px-4 py-2.5 text-sm font-sans rounded-lg resize-none transition-all duration-150"
+                style={{
+                  background: 'var(--white)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-1)',
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#C9A96E';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,169,110,0.2)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                onClick={() => setForm((f) => ({ ...f, isAnonymous: !f.isAnonymous }))}
+                className="w-10 h-5 rounded-full transition-colors relative cursor-pointer"
+                style={{ background: form.isAnonymous ? '#C9A96E' : 'var(--border)' }}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  form.isAnonymous ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </div>
+              <span className="text-sm font-sans" style={{ color: 'var(--text-2)' }}>
+                Submit anonymously
+              </span>
+            </label>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                loading={createMut.isPending}
+                disabled={!form.title.trim() || !form.body.trim()}
+                onClick={() => createMut.mutate(form)}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* List */}
+      {isLoading ? (
+        <Spinner />
+      ) : proposals.length === 0 ? (
+        <Empty message="No proposals yet" sub="Be the first to submit an idea" />
+      ) : (
+        <div className="flex flex-col gap-3 stagger">
+          {proposals.map((p) => (
+            <Card key={p.id} className="p-5 animate-fade-up">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className="text-sm font-sans font-semibold text-t1 flex-1">
+                  {p.title}
+                </h3>
+                <StatusBadge status={p.status} />
+              </div>
+              <p className="text-sm font-sans line-clamp-2 mb-4"
+                style={{ color: 'var(--text-3)' }}>
+                {p.body}
+              </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => voteMut.mutate({ id: p.id, isUpvote: true })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-all duration-150"
+                    style={{
+                      background: 'var(--surface-2)',
+                      color: 'var(--text-2)',
+                      border: '1px solid var(--border)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(201,169,110,0.1)';
+                      e.currentTarget.style.borderColor = '#C9A96E';
+                      e.currentTarget.style.color = '#C9A96E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--surface-2)';
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.color = 'var(--text-2)';
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                    {p.upvotes ?? 0}
+                  </button>
+                  <button
+                    onClick={() => voteMut.mutate({ id: p.id, isUpvote: false })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-all duration-150"
+                    style={{
+                      background: 'var(--surface-2)',
+                      color: 'var(--text-2)',
+                      border: '1px solid var(--border)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#FEF2F2';
+                      e.currentTarget.style.borderColor = '#FECACA';
+                      e.currentTarget.style.color = '#DC2626';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--surface-2)';
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.color = 'var(--text-2)';
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    {p.downvotes ?? 0}
+                  </button>
+                </div>
+                <p className="text-xs font-sans" style={{ color: 'var(--text-4)' }}>
+                  {p.isAnonymous ? 'Anonymous' : (p.author?.profile?.firstName ?? p.author?.email)}
+                  {' · '}
+                  {fmt(p.createdAt)}
+                </p>
+              </div>
+            </Card>
           ))}
         </div>
       )}
-
-      {showForm && (
-        <CreateProposalModal
-          onClose={() => setShowForm(false)}
-          onSuccess={() => { setShowForm(false); qc.invalidateQueries(['proposals']) }}
-        />
-      )}
     </div>
-  )
-}
-
-function ProposalCard({ proposal, isAdmin, currentUserId, onVote }) {
-  const qc = useQueryClient()
-
-  const voteMutation = useMutation({
-    mutationFn: (isUpvote) => voteProposalApi(proposal.id, isUpvote),
-    onSuccess: () => qc.invalidateQueries(['proposals']),
-  })
-
-  const isOwner = proposal.authorId === currentUserId
-  const authorName = proposal.isAnonymous
-    ? 'Anonymous'
-    : proposal.author
-      ? `${proposal.author.profile?.firstName} ${proposal.author.profile?.lastName}`
-      : 'Unknown'
-
-  return (
-    <div className="bg-white border border-gray-100 rounded-xl p-5">
-      <div className="flex items-start gap-4">
-
-        {/* Vote column */}
-        <div className="flex flex-col items-center gap-1 pt-0.5 flex-shrink-0">
-          <button
-            onClick={() => voteMutation.mutate(true)}
-            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold border transition
-              ${proposal.userVote === 'UP'
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500'
-              }`}
-          >
-            +
-          </button>
-          <span className="text-sm font-semibold text-gray-700">
-            {proposal.upvotes - proposal.downvotes}
-          </span>
-          <button
-            onClick={() => voteMutation.mutate(false)}
-            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold border transition
-              ${proposal.userVote === 'DOWN'
-                ? 'bg-red-400 text-white border-red-400'
-                : 'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400'
-              }`}
-          >
-            -
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <h3 className="text-sm font-semibold text-gray-900">{proposal.title}</h3>
-            <StatusBadge status={proposal.status} />
-          </div>
-          <p className="text-xs text-gray-500 line-clamp-2 mb-2">{proposal.body}</p>
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <span>{authorName}</span>
-            <span>·</span>
-            <span>{new Date(proposal.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-            <span>·</span>
-            <span>{proposal.upvotes} upvotes</span>
-          </div>
-          {proposal.adminNote && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500 italic">Admin note: {proposal.adminNote}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CreateProposalModal({ onClose, onSuccess }) {
-  const [form, setForm] = useState({ title: '', body: '', isAnonymous: false })
-  const set = (f) => (e) => {
-    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
-    setForm({ ...form, [f]: val })
-  }
-
-  const mutation = useMutation({ mutationFn: createProposalApi, onSuccess })
-
-  return (
-    <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">New proposal</h2>
-          <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600">Close</button>
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form) }} className="p-6 flex flex-col gap-4">
-          <Alert type="error" message={mutation.error?.response?.data?.message} />
-          <Input label="Title" placeholder="What is your proposal about?" value={form.title} onChange={set('title')} required />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Details</label>
-            <textarea
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none"
-              rows={5}
-              placeholder="Describe your idea or complaint in detail. Minimum 20 characters."
-              value={form.body}
-              onChange={set('body')}
-              required
-            />
-          </div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={form.isAnonymous} onChange={set('isAnonymous')} className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-700">Submit anonymously</p>
-              <p className="text-xs text-gray-400">Your name will not be shown publicly</p>
-            </div>
-          </label>
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button type="submit" loading={mutation.isPending} className="flex-1">Submit</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
+  );
 }

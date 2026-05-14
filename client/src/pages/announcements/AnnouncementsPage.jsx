@@ -1,103 +1,92 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import {
-  getAnnouncements,
-  deleteAnnouncement,
-} from '../../api/announcements';
-import StatusBadge from '../../components/ui/StatusBadge';
+import { getAnnouncements, deleteAnnouncement } from '../../api/announcements';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
+import Empty from '../../components/ui/Empty';
+import Spinner from '../../components/ui/Skeleton';
 import CreateAnnouncementModal from './CreateAnnouncementModal';
 
 const ADMIN_ROLES = ['TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL', 'SUPER_ADMIN'];
 
-function formatDate(iso) {
+function fmt(iso) {
   return new Date(iso).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   });
 }
 
-function AnnouncementCard({ announcement, isAdmin, onDelete }) {
+function AnnouncementCard({ a, isAdmin, onDelete }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div
-      className={`bg-white border rounded-xl p-5 transition-all ${
-        announcement.isPinned
-          ? 'border-indigo-200 bg-indigo-50/30'
-          : 'border-gray-100'
-      } ${!announcement.isRead ? 'border-l-4 border-l-indigo-400' : ''}`}
+    <Card
+      className="p-5 animate-fade-up"
+      style={{
+        borderLeft: !a.isRead ? '3px solid #C9A96E' : '1px solid var(--border)',
+      }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            {announcement.isPinned && (
-              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            {a.isPinned && (
+              <span className="text-xs font-sans font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: '#FFFBEB', color: '#92400E' }}>
                 Pinned
               </span>
             )}
-            {!announcement.isRead && (
-              <span className="text-xs font-semibold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">
+            {!a.isRead && (
+              <span className="text-xs font-sans font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(201,169,110,0.12)', color: '#C9A96E' }}>
                 New
               </span>
             )}
-            {announcement.targetRole && (
-              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                {announcement.targetRole}
-              </span>
-            )}
-            {announcement.targetDept && (
-              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                {announcement.targetDept}
-              </span>
-            )}
-            {announcement.targetYear && (
-              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                Year {announcement.targetYear}
+            {a.targetRole && (
+              <span className="text-xs font-sans px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--surface-2)', color: 'var(--text-4)' }}>
+                {a.targetRole}
               </span>
             )}
           </div>
 
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">
-            {announcement.title}
-          </h3>
+          <h3 className="text-sm font-sans font-semibold text-t1 mb-1">{a.title}</h3>
 
-          <p className={`text-sm text-gray-600 leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`}>
-            {announcement.body}
+          <p className={`text-sm font-sans leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`}
+            style={{ color: 'var(--text-3)' }}>
+            {a.body}
           </p>
 
-          {announcement.body.length > 160 && (
+          {a.body.length > 160 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-xs text-indigo-500 hover:text-indigo-700 mt-1"
+              className="text-xs font-sans font-medium mt-1 transition-colors"
+              style={{ color: '#C9A96E' }}
             >
               {expanded ? 'Show less' : 'Read more'}
             </button>
           )}
 
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-            <span>
-              {announcement.createdByUser?.profile?.firstName}{' '}
-              {announcement.createdByUser?.profile?.lastName}
-            </span>
-            <span>·</span>
-            <span>{formatDate(announcement.createdAt)}</span>
-          </div>
+          <p className="text-xs font-sans mt-3" style={{ color: 'var(--text-4)' }}>
+            {a.createdByUser?.profile?.firstName} {a.createdByUser?.profile?.lastName}
+            {' · '}{fmt(a.createdAt)}
+          </p>
         </div>
 
         {isAdmin && (
           <button
-            onClick={() => onDelete(announcement.id)}
-            className="text-xs text-gray-300 hover:text-red-400 transition-colors shrink-0 mt-1"
+            onClick={() => onDelete(a.id)}
+            className="text-xs font-sans transition-colors shrink-0 mt-1"
+            style={{ color: 'var(--text-4)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#DC2626')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-4)')}
           >
             Delete
           </button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -115,91 +104,64 @@ export default function AnnouncementsPage() {
     queryFn: () => getAnnouncements({ page, limit: 20 }),
   });
 
-  const deleteMutation = useMutation({
+  const deleteMut = useMutation({
     mutationFn: deleteAnnouncement,
-    onSuccess: () => {
-      qc.invalidateQueries(['announcements']);
-    },
-    onError: (err) => {
-      setError(err.response?.data?.message || 'Failed to delete announcement');
-    },
+    onSuccess: () => qc.invalidateQueries(['announcements']),
+    onError: (e) => setError(e.response?.data?.message || 'Failed to delete'),
   });
 
   const announcements = data?.data?.announcements ?? [];
-  const pagination = data?.data?.pagination;
+  const pagination    = data?.data?.pagination;
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Announcements</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Institution-wide and targeted updates
-          </p>
-        </div>
-        {isAdmin && (
-          <Button variant="primary" onClick={() => setShowCreate(true)}>
-            Post Announcement
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Announcements"
+        subtitle="Institution-wide and targeted updates"
+        action={
+          isAdmin && (
+            <Button variant="primary" onClick={() => setShowCreate(true)}>
+              Post announcement
+            </Button>
+          )
+        }
+      />
 
       <Alert type="error" message={error} />
 
-      {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : announcements.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No announcements yet</p>
-        </div>
+        <Empty message="No announcements yet" />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 stagger">
           {announcements.map((a) => (
             <AnnouncementCard
               key={a.id}
-              announcement={a}
+              a={a}
               isAdmin={isAdmin}
-              onDelete={(id) => deleteMutation.mutate(id)}
+              onDelete={(id) => deleteMut.mutate(id)}
             />
           ))}
         </div>
       )}
 
-      {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-8">
-          <Button
-            variant="secondary"
-            disabled={page === 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-gray-500">
-            Page {page} of {pagination.totalPages}
+          <Button variant="secondary" disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}>Previous</Button>
+          <span className="text-sm font-sans" style={{ color: 'var(--text-3)' }}>
+            {page} of {pagination.totalPages}
           </span>
-          <Button
-            variant="secondary"
-            disabled={page === pagination.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
+          <Button variant="secondary" disabled={page === pagination.totalPages}
+            onClick={() => setPage((p) => p + 1)}>Next</Button>
         </div>
       )}
 
-      {/* Create Modal */}
       {showCreate && (
         <CreateAnnouncementModal
           onClose={() => setShowCreate(false)}
-          onCreated={() => {
-            setShowCreate(false);
-            qc.invalidateQueries(['announcements']);
-          }}
+          onCreated={() => { setShowCreate(false); qc.invalidateQueries(['announcements']); }}
         />
       )}
     </div>

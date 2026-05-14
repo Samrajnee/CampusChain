@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { register as apiRegister } from '../../api/auth';
+import { registerApi } from '../../api/auth';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
@@ -39,7 +39,7 @@ export default function RegisterPage() {
     studentId:  '',
     year:       '',
   });
-  const [error, setError]   = useState('');
+  const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
 
   const set = (field) => (e) =>
@@ -47,10 +47,10 @@ export default function RegisterPage() {
 
   // ── Step 1 validation ──────────────────────────────────────────────────────
   function validateStep1() {
-    if (!form.email.trim())               return 'Email is required';
-    if (!form.email.includes('@'))        return 'Enter a valid email';
-    if (form.password.length < 8)         return 'Password must be at least 8 characters';
-    if (form.password !== form.confirm)   return 'Passwords do not match';
+    if (!form.email.trim())             return 'Email is required';
+    if (!form.email.includes('@'))      return 'Enter a valid email';
+    if (form.password.length < 8)       return 'Password must be at least 8 characters';
+    if (form.password !== form.confirm) return 'Passwords do not match';
     return null;
   }
 
@@ -71,11 +71,11 @@ export default function RegisterPage() {
 
     try {
       const payload = {
-        email:      form.email,
-        password:   form.password,
-        role:       form.role,
-        firstName:  form.firstName,
-        lastName:   form.lastName,
+        email:     form.email,
+        password:  form.password,
+        role:      form.role,
+        firstName: form.firstName,
+        lastName:  form.lastName,
         ...(form.role === 'STUDENT' && {
           department: form.department || undefined,
           studentId:  form.studentId  || undefined,
@@ -83,10 +83,11 @@ export default function RegisterPage() {
         }),
       };
 
-      const res = await apiRegister(payload);
+      const res = await registerApi(payload); // ← fixed: was apiRegister
       login(res.data.token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
+      console.error('Registration error:', err); // keep for debugging
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
@@ -343,9 +344,7 @@ export default function RegisterPage() {
                       style={{
                         background: 'var(--white)',
                         border: '1px solid var(--border)',
-                        color: form.department
-                          ? 'var(--text-1)'
-                          : 'var(--text-4)',
+                        color: form.department ? 'var(--text-1)' : 'var(--text-4)',
                         outline: 'none',
                         boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
                       }}

@@ -1,288 +1,190 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listGrievancesApi, createGrievanceApi, updateGrievanceStatusApi } from '../../api/governance'
-import { useAuth } from '../../context/AuthContext'
-import StatusBadge from '../../components/ui/StatusBadge'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import Alert from '../../components/ui/Alert'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
+import { getGrievances, createGrievance } from '../../api/governance';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import StatusBadge from '../../components/ui/StatusBadge';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Alert from '../../components/ui/Alert';
+import Empty from '../../components/ui/Empty';
+import Spinner from '../../components/ui/Skeleton';
 
-const ADMIN_ROLES = ['TEACHER', 'HOD', 'PRINCIPAL', 'SUPER_ADMIN']
+const ADMIN_ROLES = ['TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL', 'SUPER_ADMIN'];
 
-const STATUS_FLOW = {
-  SUBMITTED: ['UNDER_REVIEW'],
-  UNDER_REVIEW: ['ESCALATED', 'RESOLVED', 'CLOSED'],
-  ESCALATED: ['RESOLVED', 'CLOSED'],
-  RESOLVED: [],
-  CLOSED: [],
+function fmt(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
 }
 
+const STATUS_COLORS = {
+  SUBMITTED:    { bg: '#EFF6FF', color: '#1D4ED8' },
+  UNDER_REVIEW: { bg: '#FFFBEB', color: '#92400E' },
+  ESCALATED:    { bg: '#FFF1F2', color: '#BE123C' },
+  RESOLVED:     { bg: '#F0FDF4', color: '#15803D' },
+  CLOSED:       { bg: 'var(--surface-2)', color: 'var(--text-4)' },
+};
+
 export default function GrievancesPage() {
-  const { user } = useAuth()
-  const isAdmin = ADMIN_ROLES.includes(user?.role)
-  const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [selected, setSelected] = useState(null)
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const isAdmin = ADMIN_ROLES.includes(user?.role);
+
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', isAnonymous: false });
+  const [error, setError] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['grievances'],
-    queryFn: () => listGrievancesApi().then((r) => r.data.data.grievances),
-  })
+    queryFn: getGrievances,
+  });
 
-  const grievances = data ?? []
+  const grievances = data?.data?.grievances ?? [];
+
+  const createMut = useMutation({
+    mutationFn: createGrievance,
+    onSuccess: () => {
+      qc.invalidateQueries(['grievances']);
+      setShowForm(false);
+      setForm({ title: '', description: '', isAnonymous: false });
+    },
+    onError: (e) => setError(e.response?.data?.message || 'Failed to submit'),
+  });
 
   return (
-    <div className="max-w-3xl flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Grievances</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {isAdmin ? 'Review and resolve student grievances' : 'Raise and track your concerns'}
-          </p>
-        </div>
-        {!isAdmin && <Button onClick={() => setShowForm(true)}>Raise grievance</Button>}
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : grievances.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No grievances found.</p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {grievances.map((g) => (
-            <GrievanceCard
-              key={g.id}
-              grievance={g}
-              isAdmin={isAdmin}
-              onClick={() => setSelected(g)}
-            />
-          ))}
-        </div>
-      )}
+    <div className="max-w-3xl mx-auto">
+      <PageHeader
+        title="Grievances"
+        subtitle={isAdmin ? 'Review and resolve student grievances' : 'Raise a concern with the institution'}
+        action={
+          !isAdmin && (
+            <Button variant="primary" onClick={() => setShowForm((s) => !s)}>
+              {showForm ? 'Cancel' : 'Raise grievance'}
+            </Button>
+          )
+        }
+      />
 
       {showForm && (
-        <CreateGrievanceModal
-          onClose={() => setShowForm(false)}
-          onSuccess={() => { setShowForm(false); qc.invalidateQueries(['grievances']) }}
-        />
-      )}
-
-      {selected && (
-        <GrievanceDetailModal
-          grievance={selected}
-          isAdmin={isAdmin}
-          onClose={() => setSelected(null)}
-          onSuccess={() => { setSelected(null); qc.invalidateQueries(['grievances']) }}
-        />
-      )}
-    </div>
-  )
-}
-
-function GrievanceCard({ grievance, isAdmin, onClick }) {
-  const authorName = grievance.isAnonymous
-    ? 'Anonymous'
-    : grievance.student
-      ? `${grievance.student.profile?.firstName} ${grievance.student.profile?.lastName}`
-      : 'Unknown'
-
-  return (
-    <button
-      onClick={onClick}
-      className="bg-white border border-gray-100 rounded-xl p-5 text-left hover:border-indigo-200 hover:shadow-sm transition w-full"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <StatusBadge status={grievance.status} />
-            {grievance.isAnonymous && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
-                Anonymous
-              </span>
-            )}
-          </div>
-          <h3 className="text-sm font-semibold text-gray-900">{grievance.title}</h3>
-          <p className="text-xs text-gray-400 mt-1 line-clamp-1">{grievance.description}</p>
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-            {isAdmin && <span>{authorName}</span>}
-            {isAdmin && <span>·</span>}
-            <span>{new Date(grievance.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </div>
-        </div>
-        <span className="text-xs text-gray-300 flex-shrink-0">View</span>
-      </div>
-    </button>
-  )
-}
-
-function CreateGrievanceModal({ onClose, onSuccess }) {
-  const [form, setForm] = useState({ title: '', description: '', isAnonymous: false })
-  const set = (f) => (e) => {
-    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
-    setForm({ ...form, [f]: val })
-  }
-
-  const mutation = useMutation({ mutationFn: createGrievanceApi, onSuccess })
-
-  return (
-    <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Raise a grievance</h2>
-          <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600">Close</button>
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form) }} className="p-6 flex flex-col gap-4">
-          <Alert type="error" message={mutation.error?.response?.data?.message} />
-          <Input label="Title" placeholder="Brief summary of your concern" value={form.title} onChange={set('title')} required />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none"
-              rows={5}
-              placeholder="Describe your concern in detail. Minimum 20 characters."
-              value={form.description}
-              onChange={set('description')}
-              required
+        <Card className="p-6 mb-6 animate-fade-up">
+          <p className="text-sm font-sans font-semibold text-t1 mb-4">
+            Submit a grievance
+          </p>
+          <Alert type="error" message={error} />
+          <div className="flex flex-col gap-4">
+            <Input
+              label="Title"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Brief description of the issue"
             />
-          </div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={form.isAnonymous} onChange={set('isAnonymous')} className="w-4 h-4 rounded border-gray-300 text-indigo-600" />
             <div>
-              <p className="text-sm font-medium text-gray-700">Submit anonymously</p>
-              <p className="text-xs text-gray-400">Your identity will not be disclosed to staff</p>
+              <label className="block text-xs font-sans font-medium mb-1.5 uppercase tracking-widest"
+                style={{ color: 'var(--text-3)' }}>
+                Details
+              </label>
+              <textarea
+                rows={4}
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Describe the issue in detail..."
+                className="w-full px-4 py-2.5 text-sm font-sans rounded-lg resize-none transition-all duration-150"
+                style={{
+                  background: 'var(--white)', border: '1px solid var(--border)',
+                  color: 'var(--text-1)', outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#C9A96E';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,169,110,0.2)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
             </div>
-          </label>
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button type="submit" loading={mutation.isPending} className="flex-1">Submit</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function GrievanceDetailModal({ grievance, isAdmin, onClose, onSuccess }) {
-  const [note, setNote] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const qc = useQueryClient()
-
-  const mutation = useMutation({
-    mutationFn: () => updateGrievanceStatusApi(grievance.id, { status: selectedStatus, note }),
-    onSuccess,
-  })
-
-  const nextStatuses = STATUS_FLOW[grievance.status] ?? []
-  const authorName = grievance.isAnonymous
-    ? 'Anonymous'
-    : grievance.student
-      ? `${grievance.student.profile?.firstName} ${grievance.student.profile?.lastName}`
-      : 'Unknown'
-
-  const statusColors = {
-    SUBMITTED: 'bg-sky-50 text-sky-600',
-    UNDER_REVIEW: 'bg-amber-50 text-amber-600',
-    ESCALATED: 'bg-orange-50 text-orange-600',
-    RESOLVED: 'bg-green-50 text-green-600',
-    CLOSED: 'bg-gray-50 text-gray-500',
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Grievance detail</h2>
-          <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600">Close</button>
-        </div>
-
-        <div className="p-6 flex flex-col gap-5">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-900">{grievance.title}</h3>
-            <StatusBadge status={grievance.status} />
-          </div>
-
-          <p className="text-sm text-gray-600 leading-relaxed">{grievance.description}</p>
-
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <span>{isAdmin ? authorName : 'You'}</span>
-            <span>·</span>
-            <span>{new Date(grievance.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </div>
-
-          {/* Status timeline */}
-          {grievance.statusHistory?.length > 0 && (
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Timeline</p>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors['SUBMITTED']}`}>Submitted</span>
-                  <span className="text-xs text-gray-400">{new Date(grievance.createdAt).toLocaleDateString('en-IN')}</span>
-                </div>
-                {grievance.statusHistory.map((log) => (
-                  <div key={log.id} className="flex items-start gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[log.toStatus]}`}>
-                      {log.toStatus.replace('_', ' ')}
-                    </span>
-                    <div>
-                      {log.note && <p className="text-xs text-gray-500">{log.note}</p>}
-                      <p className="text-xs text-gray-400">{new Date(log.changedAt).toLocaleDateString('en-IN')}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Admin note */}
-          {grievance.adminNote && (
-            <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
-              <p className="text-xs font-medium text-amber-700 mb-0.5">Staff note</p>
-              <p className="text-xs text-amber-600">{grievance.adminNote}</p>
-            </div>
-          )}
-
-          {/* Admin actions */}
-          {isAdmin && nextStatuses.length > 0 && (
-            <div className="border-t border-gray-100 pt-4 flex flex-col gap-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Update status</p>
-              <div className="flex gap-2 flex-wrap">
-                {nextStatuses.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSelectedStatus(s)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition
-                      ${selectedStatus === s ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-500 hover:border-indigo-200'}`}
-                  >
-                    {s.replace('_', ' ')}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Note (optional)</label>
-                <textarea
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none"
-                  rows={2}
-                  placeholder="Add a note for the student"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-              </div>
-              <Button
-                onClick={() => mutation.mutate()}
-                loading={mutation.isPending}
-                disabled={!selectedStatus}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                onClick={() => setForm((f) => ({ ...f, isAnonymous: !f.isAnonymous }))}
+                className="w-10 h-5 rounded-full transition-colors relative cursor-pointer"
+                style={{ background: form.isAnonymous ? '#C9A96E' : 'var(--border)' }}
               >
-                Update status
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  form.isAnonymous ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </div>
+              <span className="text-sm font-sans" style={{ color: 'var(--text-2)' }}>
+                Submit anonymously
+              </span>
+            </label>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                loading={createMut.isPending}
+                disabled={!form.title.trim() || !form.description.trim()}
+                onClick={() => createMut.mutate(form)}
+              >
+                Submit
               </Button>
-              <Alert type="error" message={mutation.error?.response?.data?.message} />
             </div>
-          )}
+          </div>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <Spinner />
+      ) : grievances.length === 0 ? (
+        <Empty
+          message="No grievances"
+          sub={isAdmin ? 'No grievances have been submitted' : 'You have not raised any grievances'}
+        />
+      ) : (
+        <div className="flex flex-col gap-3 stagger">
+          {grievances.map((g) => {
+            const sc = STATUS_COLORS[g.status] ?? STATUS_COLORS.CLOSED;
+            return (
+              <Card key={g.id} className="p-5 animate-fade-up">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h3 className="text-sm font-sans font-semibold text-t1 flex-1">
+                    {g.title}
+                  </h3>
+                  <span
+                    className="text-xs font-sans font-semibold px-2.5 py-1 rounded-full shrink-0"
+                    style={{ background: sc.bg, color: sc.color }}
+                  >
+                    {g.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <p className="text-sm font-sans line-clamp-2 mb-3"
+                  style={{ color: 'var(--text-3)' }}>
+                  {g.description}
+                </p>
+                {g.adminNote && (
+                  <div className="rounded-lg px-3 py-2 mb-3"
+                    style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                    <p className="text-xs font-sans font-semibold mb-0.5"
+                      style={{ color: '#92400E' }}>
+                      Admin note
+                    </p>
+                    <p className="text-xs font-sans" style={{ color: '#78350F' }}>
+                      {g.adminNote}
+                    </p>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs font-sans"
+                  style={{ color: 'var(--text-4)' }}>
+                  <span>{g.isAnonymous ? 'Anonymous' : 'You'}</span>
+                  <span>{fmt(g.createdAt)}</span>
+                </div>
+              </Card>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
-  )
+  );
 }

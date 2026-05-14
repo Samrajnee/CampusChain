@@ -60,7 +60,7 @@ export default function LoginPage() {
             style={{ color: 'rgba(154,163,186,0.8)', maxWidth: '340px' }}
           >
             Elections, certificates, clubs, events, and your complete campus
-            identity — all in one place.
+            identity - all in one place.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function LoginPage() {
           className="text-xs font-sans"
           style={{ color: 'rgba(154,163,186,0.4)' }}
         >
-          Techno India Batanagar
+          {/* Techno India Batanagar */}
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export default function LoginPage() {
             onClick={handleSubmit}
             className="w-full justify-center py-3"
           >
-            Sign in
+            Log in
           </Button>
 
           <p

@@ -1,137 +1,108 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { listClubsApi, createClubApi } from '../../api/campus-ops'
-import { useAuth } from '../../context/AuthContext'
-import StatusBadge from '../../components/ui/StatusBadge'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import Alert from '../../components/ui/Alert'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { getClubs, joinClub, leaveClub } from '../../api/campus-ops';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import StatusBadge from '../../components/ui/StatusBadge';
+import Button from '../../components/ui/Button';
+import Empty from '../../components/ui/Empty';
+import Spinner from '../../components/ui/Skeleton';
 
 export default function ClubsPage() {
-  const { user } = useAuth()
-  const qc = useQueryClient()
-  const [showCreate, setShowCreate] = useState(false)
-  const [search, setSearch] = useState('')
+  const { user } = useAuth();
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['clubs'],
-    queryFn: () => listClubsApi().then((r) => r.data.data.clubs),
-  })
+    queryFn: getClubs,
+  });
 
-  const clubs = (data ?? []).filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const clubs = data?.data?.clubs ?? [];
+
+  const joinMut = useMutation({
+    mutationFn: joinClub,
+    onSuccess: () => qc.invalidateQueries(['clubs']),
+  });
+
+  const leaveMut = useMutation({
+    mutationFn: leaveClub,
+    onSuccess: () => qc.invalidateQueries(['clubs']),
+  });
 
   return (
-    <div className="max-w-4xl flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Clubs</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Student clubs and organisations</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>Start a club</Button>
-      </div>
-
-      <input
-        type="text"
-        placeholder="Search clubs..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    <div className="max-w-4xl mx-auto">
+      <PageHeader
+        title="Clubs"
+        subtitle="Join clubs, take on roles, and build your campus profile"
+        action={<Button variant="primary">Start a club</Button>}
       />
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : clubs.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No clubs found.</p>
-        </div>
+        <Empty message="No clubs yet" sub="Be the first to start one" />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {clubs.map((club) => (
-            <Link
-              key={club.id}
-              to={`/clubs/${club.id}`}
-              className="bg-white border border-gray-100 rounded-xl p-5 hover:border-indigo-200 hover:shadow-sm transition group"
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-bold text-indigo-600">
-                    {club.name.charAt(0)}
-                  </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger">
+          {clubs.map((club) => {
+            const isMember = club.members?.some((m) => m.userId === user?.id);
+            const myRole   = club.members?.find((m) => m.userId === user?.id)?.role;
+
+            return (
+              <Card key={club.id} hover className="p-5 animate-fade-up flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/clubs/${club.id}`}>
+                      <h3 className="text-sm font-sans font-semibold text-t1 hover:text-gold transition-colors">
+                        {club.name}
+                      </h3>
+                    </Link>
+                    {myRole && (
+                      <span className="text-xs font-sans font-semibold"
+                        style={{ color: '#C9A96E' }}>
+                        {myRole.charAt(0) + myRole.slice(1).toLowerCase()}
+                      </span>
+                    )}
+                  </div>
+                  <StatusBadge status={club.status} />
                 </div>
-                <StatusBadge status={club.status} />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition mb-1">
-                {club.name}
-              </h3>
-              {club.description && (
-                <p className="text-xs text-gray-400 line-clamp-2 mb-3">{club.description}</p>
-              )}
-              <div className="flex items-center gap-3 text-xs text-gray-400">
-                <span>{club._count?.members ?? 0} members</span>
-                <span>·</span>
-                <span>{club._count?.events ?? 0} events</span>
-                {club.advisor && (
-                  <>
-                    <span>·</span>
-                    <span>Advised by {club.advisor.user?.profile?.firstName}</span>
-                  </>
+
+                {club.description && (
+                  <p className="text-sm font-sans line-clamp-2"
+                    style={{ color: 'var(--text-3)' }}>
+                    {club.description}
+                  </p>
                 )}
-              </div>
-            </Link>
-          ))}
+
+                <div className="flex items-center justify-between mt-auto pt-2"
+                  style={{ borderTop: '1px solid var(--border)' }}>
+                  <p className="text-xs font-sans" style={{ color: 'var(--text-4)' }}>
+                    {club._count?.members ?? 0} members
+                  </p>
+                  {isMember ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => leaveMut.mutate(club.id)}
+                      loading={leaveMut.isPending}
+                    >
+                      Leave
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      onClick={() => joinMut.mutate(club.id)}
+                      loading={joinMut.isPending}
+                      disabled={club.status !== 'ACTIVE'}
+                    >
+                      Join
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
-
-      {showCreate && (
-        <CreateClubModal
-          onClose={() => setShowCreate(false)}
-          onSuccess={() => { setShowCreate(false); qc.invalidateQueries(['clubs']) }}
-        />
-      )}
     </div>
-  )
-}
-
-function CreateClubModal({ onClose, onSuccess }) {
-  const [form, setForm] = useState({ name: '', description: '' })
-  const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
-
-  const mutation = useMutation({ mutationFn: createClubApi, onSuccess })
-
-  return (
-    <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Start a club</h2>
-          <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600">Close</button>
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form) }} className="p-6 flex flex-col gap-4">
-          <Alert type="error" message={mutation.error?.response?.data?.message} />
-          <p className="text-xs text-gray-400 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-            New clubs require HOD approval before becoming active.
-          </p>
-          <Input label="Club name" placeholder="e.g. Photography Club" value={form.name} onChange={set('name')} required />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none"
-              rows={3}
-              placeholder="What is this club about?"
-              value={form.description}
-              onChange={set('description')}
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button type="submit" loading={mutation.isPending} className="flex-1">Submit for approval</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
+  );
 }

@@ -10,6 +10,7 @@ import {
 } from '../../api/mentorship';
 import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
+import Card from '../../components/ui/Card';
 import RequestMentorshipModal from './RequestMentorshipModal';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ function MentorshipCard({ item, userId, role, onAction }) {
   const isParticipant = isMentee || isMentor;
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-5 flex flex-col gap-3">
+    <Card className="p-5 flex flex-col gap-3">
 
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
@@ -144,47 +145,31 @@ function MentorshipCard({ item, userId, role, onAction }) {
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-50">
 
-        {/* Accept — any teacher, only when PENDING, and not the mentee */}
         {item.status === 'PENDING' && isTeacher && !isMentee && (
-          <Button
-            variant="primary"
-            onClick={() => onAction('accept', item.id)}
-          >
+          <Button variant="primary" onClick={() => onAction('accept', item.id)}>
             Accept request
           </Button>
         )}
 
-        {/* Complete — participant or HOD, only when ACTIVE */}
         {item.status === 'ACTIVE' && (isParticipant || isHod) && (
-          <Button
-            variant="secondary"
-            onClick={() => onAction('complete', item.id)}
-          >
+          <Button variant="secondary" onClick={() => onAction('complete', item.id)}>
             Mark complete
           </Button>
         )}
 
-        {/* Cancel — mentee or HOD, PENDING or ACTIVE */}
         {['PENDING', 'ACTIVE'].includes(item.status) && (isMentee || isHod) && (
-          <Button
-            variant="ghost"
-            onClick={() => onAction('cancel', item.id)}
-          >
+          <Button variant="ghost" onClick={() => onAction('cancel', item.id)}>
             Cancel
           </Button>
         )}
 
-        {/* Force close — HOD only */}
         {isHod && !['COMPLETED', 'CLOSED', 'CANCELLED'].includes(item.status) && (
-          <Button
-            variant="danger"
-            onClick={() => onAction('close', item.id)}
-          >
+          <Button variant="danger" onClick={() => onAction('close', item.id)}>
             Force close
           </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -209,8 +194,6 @@ export default function MentorshipPage() {
 
   const mentorships = data?.data?.mentorships ?? [];
   const pagination  = data?.data?.pagination;
-
-  // ── Mutation factory ───────────────────────────────────────────────────────
 
   const invalidate = () => qc.invalidateQueries(['mentorships']);
 
@@ -282,7 +265,7 @@ export default function MentorshipPage() {
           <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : mentorships.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
+        <div className="bg-white rounded-xl p-12 text-center">
           <p className="text-sm text-gray-400">
             {tab === 'PENDING' && isTeacher
               ? 'No open mentorship requests right now'
