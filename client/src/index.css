@@ -23,6 +23,61 @@
   /* Fonts */
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'DM Sans', system-ui, sans-serif;
+
+  html {
+  background: var(--surface);
+  transition: background 0.2s ease;
+}
+}
+
+/* ── Dark mode overrides ───────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --navy:        #0B1120;
+  --slate:       #1E2D4A;
+  --slate-mid:   #2A3D5C;
+  --gold:        #C9A96E;
+  --gold-light:  #E8D5AA;
+  --gold-dim:    #3D2F1A;
+
+  /* Surfaces flip to dark */
+  --surface:     #0F1623;
+  --surface-2:   #161E2E;
+  --border:      #1E2D4A;
+  --border-dim:  #2A3D5C;
+
+  /* Text scale inverts */
+  --text-1:      #F0EEE8;
+  --text-2:      #C8C4BC;
+  --text-3:      #8B96B0;
+  --text-4:      #4A5568;
+
+  --white:       #141C2B;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: #141C2B !important;
+}
+
+/* Dark mode body */
+[data-theme="dark"] body {
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
+}
+
+/* Dark mode scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--border-dim);
+}
+
+/* Dark mode skeleton */
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--border)    50%,
+    var(--surface-2) 75%
+  );
+  background-size: 400px 100%;
 }
 
 /* ── Base reset ────────────────────────────────────────────────────────────── */
@@ -42,6 +97,7 @@ body {
   background: var(--surface);
   color: var(--text-1);
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 
   /* Grain texture — barely visible, adds depth */
   background-image:
