@@ -26,3 +26,11 @@ export const uploadAvatar = (file) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then((r) => r.data);
 };
+
+export const getMySkills      = ()           => api.get('/skills/me').then(r => r.data);
+export const getUserSkills    = (userId)     => api.get(`/skills/user/${userId}`).then(r => r.data);
+export const searchSkills     = (q)          => api.get('/skills/search', { params: { q } }).then(r => r.data);
+export const addSkill         = (name)       => api.post('/skills', { name }).then(r => r.data);
+export const removeSkill      = (skillId)    => api.delete(`/skills/${skillId}`).then(r => r.data);
+export const endorseSkill     = (userId, data) => api.post(`/skills/endorse/${userId}`, data).then(r => r.data);
+export const removeEndorsement = (userId, skillId) => api.delete(`/skills/endorse/${userId}/${skillId}`).then(r => r.data);

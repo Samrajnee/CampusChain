@@ -11,6 +11,7 @@ import Spinner from '../../components/ui/Skeleton';
 import { useState, useRef, useEffect } from 'react';
 import Avatar from '../../components/ui/Avatar';
 import { uploadAvatar } from '../../api/identity';
+import SkillsPanel from '../../components/skills/SkillsPanel';
 
 const PRIVACY_FIELDS = [
   { key: 'showPhone',       label: 'Show phone number' },
@@ -284,6 +285,9 @@ async function handleAvatarUpload(e) {
           </p>
         )}
       </Card>
+      <Card className="p-6 mt-5">
+  <SkillsPanel targetUserId={user?.id} isOwn={true} />
+</Card>
     </div>
   );
 }

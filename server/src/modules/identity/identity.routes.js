@@ -10,8 +10,23 @@ import {
   updateProfileSchema,
   createBadgeSchema,
 } from './identity.validation.js'
+import * as skillsController from './skills.controller.js';
 
 const router = Router()
+
+// Skills — own profile
+router.get('/skills/me',              authenticate, skillsController.getMySkills);
+router.post('/skills',                authenticate, skillsController.addSkill);
+router.delete('/skills/:skillId',     authenticate, skillsController.removeSkill);
+
+// Skills — other users
+router.get('/skills/user/:userId',    authenticate, skillsController.getUserSkills);
+router.get('/skills/search',          authenticate, skillsController.searchSkills);
+
+// Endorsements
+router.post('/skills/endorse/:userId',    authenticate, skillsController.endorseSkill);
+router.delete('/skills/endorse/:userId/:skillId', authenticate, skillsController.removeEndorsement);
+
 
 // Public — no auth needed
 router.get('/verify/:code', IdentityController.verifyCertificate)

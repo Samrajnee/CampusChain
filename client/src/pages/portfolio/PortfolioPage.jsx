@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPortfolio } from '../../api/identity';
+import SkillsPanel from '../../components/skills/SkillsPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -416,6 +417,11 @@ export default function PortfolioPage() {
                 <p className="text-sm font-sans" style={{ color: 'var(--text-4)' }}>
                   No public achievements yet
                 </p>
+                {user?.id && (
+                  <Section title="Skills">
+                    <SkillsPanel targetUserId={user.id} isOwn={false} />
+                  </Section>
+                )}
               </div>
             )}
           </div>
