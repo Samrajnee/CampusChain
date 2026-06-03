@@ -11,10 +11,10 @@ export const deleteEventApi = (id) => apiClient.delete(`/events/${id}`)
 
 // Clubs
 export const listClubsApi = () => apiClient.get('/clubs')
-export const getClubApi = (id) => apiClient.get(`/clubs/${id}`)
+export const getClubs = (id) => apiClient.get(`/clubs/${id}`)
 export const createClubApi = (data) => apiClient.post('/clubs', data)
-export const joinClubApi = (id) => apiClient.post(`/clubs/${id}/join`)
-export const leaveClubApi = (id) => apiClient.post(`/clubs/${id}/leave`)
+export const joinClub = (id) => apiClient.post(`/clubs/${id}/join`)
+export const leaveClub = (id) => apiClient.post(`/clubs/${id}/leave`)
 export const updateClubStatusApi = (id, data) => apiClient.patch(`/clubs/${id}/status`, data)
 
 // Budget

@@ -16,6 +16,7 @@ import EventDetailPage from './pages/events/EventDetailPage'
 import ClubsPage from './pages/clubs/ClubsPage'
 import ClubDetailPage from './pages/clubs/ClubDetailPage'
 import ProfilePage from './pages/profile/ProfilePage'
+import PortfolioPage from './pages/portfolio/PortfolioPage';
 import CertificatesPage from './pages/certificates/CertificatesPage'
 import LeaderboardPage from './pages/leaderboard/LeaderboardPage'
 import DirectoryPage from './pages/directory/DirectoryPage'
@@ -48,6 +49,7 @@ function ProtectedRoute() {
 const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/verify/:code', element: <VerifyPage /> },
+  { path: '/portfolio/:slug', element: <PortfolioPage /> },
 
   {
     element: <GuestRoute />,

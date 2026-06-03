@@ -83,6 +83,16 @@ export const getXPTimeline = async (req, res, next) => {
   } catch (err) { next(err) }
 }
 
+//Portfolio
+export async function getPortfolio(req, res, next) {
+  try {
+    const profile = await service.getPortfolio(req.params.slug);
+    sendSuccess(res, 'Portfolio fetched', { portfolio: profile });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Leaderboard
 export const getLeaderboard = async (req, res, next) => {
   try {

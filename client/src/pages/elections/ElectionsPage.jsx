@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getElections } from '../../api/elections';
+import { getElectionApi } from '../../api/elections';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import SectionLabel from '../../components/ui/SectionLabel';

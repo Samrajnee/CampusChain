@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getEvents } from '../../api/campus-ops';
+import { getEventApi } from '../../api/campus-ops';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import SectionLabel from '../../components/ui/SectionLabel';

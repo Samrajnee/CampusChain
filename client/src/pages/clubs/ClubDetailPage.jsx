@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getClubApi, joinClubApi, leaveClubApi, updateClubStatusApi } from '../../api/campus-ops'
+import { getClubs, joinClub, leaveClub, updateClubStatusApi } from '../../api/campus-ops'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/ui/StatusBadge'
 import Button from '../../components/ui/Button'

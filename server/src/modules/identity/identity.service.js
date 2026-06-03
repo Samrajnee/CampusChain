@@ -49,24 +49,24 @@ export const issueCertificate = async ({ userId, title, description, type, issue
       include: { user: { include: { profile: true } } },
     })
 
-    // Fetch user email for notification
-const recipient = await prisma.user.findUnique({
-  where: { id: data.userId },
-  select: { email: true, profile: { select: { firstName: true } } },
-});
-if (recipient) {
-  sendEmail({
-    to: recipient.email,
-    subject: `Certificate issued: ${data.title}`,
-    html: certificateIssuedEmail({
-      firstName: recipient.profile?.firstName ?? 'there',
-      title: certificate.title,
-      issuedBy: certificate.issuedBy,
-      type: certificate.type,
-      uniqueCode: certificate.uniqueCode,
-    }),
-  });
-}
+    // Fixed: was incorrectly referencing data.userId — userId is already in scope
+    const recipient = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, profile: { select: { firstName: true } } },
+    });
+    if (recipient) {
+      sendEmail({
+        to: recipient.email,
+        subject: `Certificate issued: ${title}`,
+        html: certificateIssuedEmail({
+          firstName: recipient.profile?.firstName ?? 'there',
+          title: cert.title,
+          issuedBy: cert.issuedBy,
+          type: cert.type,
+          uniqueCode: cert.uniqueCode,
+        }),
+      });
+    }
 
     await creditXP({
       userId,
@@ -186,22 +186,23 @@ export const awardBadge = async ({ userId, badgeId, awardedBy }) => {
     return ub
   })
 
+  // Fixed: was incorrectly referencing data.userId — userId is already in scope
   const recipient = await prisma.user.findUnique({
-  where: { id: data.userId },
-  select: { email: true, profile: { select: { firstName: true } } },
-});
-if (recipient) {
-  sendEmail({
-    to: recipient.email,
-    subject: `You earned the "${badge.name}" badge`,
-    html: badgeEarnedEmail({
-      firstName: recipient.profile?.firstName ?? 'there',
-      badgeName: badge.name,
-      badgeCategory: badge.category,
-      xpReward: badge.xpReward,
-    }),
+    where: { id: userId },
+    select: { email: true, profile: { select: { firstName: true } } },
   });
-}
+  if (recipient) {
+    sendEmail({
+      to: recipient.email,
+      subject: `You earned the "${badge.name}" badge`,
+      html: badgeEarnedEmail({
+        firstName: recipient.profile?.firstName ?? 'there',
+        badgeName: badge.name,
+        badgeCategory: badge.category,
+        xpReward: badge.xpReward,
+      }),
+    });
+  }
 
   await notify({
     userId,
@@ -320,6 +321,65 @@ export const getXPTimeline = async (userId) => {
     orderBy: { createdAt: 'desc' },
     take: 50,
   })
+}
+
+// ─────────────────────────────────────────────
+// PORTFOLIO
+// ─────────────────────────────────────────────
+
+export async function getPortfolio(slug) {
+  const profile = await prisma.profile.findFirst({
+    where: {
+      portfolioSlug: slug,
+      isProfilePublic: true,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          role: true,
+          createdAt: true,
+          studentDetail: true,
+          certificates: {
+            where: { isRevoked: false },
+            orderBy: { createdAt: 'desc' },
+          },
+          userBadges: {
+            include: { badge: true },
+            orderBy: { earnedAt: 'desc' },
+          },
+          clubMembers: {
+            include: {
+              club: { select: { name: true, status: true } },
+            },
+            orderBy: { joinedAt: 'desc' },
+          },
+          mentorships: {
+            where: { status: 'COMPLETED' },
+            select: { topic: true, completedAt: true },
+            orderBy: { completedAt: 'desc' },
+            take: 5,
+          },
+          xpLedger: {
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            select: {
+              amount: true,
+              eventType: true,
+              description: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!profile) {
+    throw Object.assign(new Error('Portfolio not found'), { status: 404 });
+  }
+
+  return profile;
 }
 
 // ─────────────────────────────────────────────

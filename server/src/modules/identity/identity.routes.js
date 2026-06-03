@@ -15,7 +15,7 @@ const router = Router()
 
 // Public — no auth needed
 router.get('/verify/:code', IdentityController.verifyCertificate)
-router.get('/portfolio/:slug', IdentityController.getPublicProfile)
+router.get('/portfolio/:slug', IdentityController.getPortfolio)
 
 router.use(authenticate)
 
