@@ -18,3 +18,11 @@ export const getPortfolio = (slug) =>
 
 export const getLeaderboard = (params) => apiClient.get('/leaderboard', { params })
 export const getDirectory = (params) => apiClient.get('/directory', { params })
+
+export const uploadAvatar = (file) => {
+  const form = new FormData();
+  form.append('avatar', file);
+  return api.post('/avatar', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);
+};

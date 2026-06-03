@@ -97,6 +97,8 @@ export default function DirectoryPage() {
           </select>
         </div>
 
+
+
         <div className="flex gap-2">
           <button
             onClick={handleSearch}
@@ -138,13 +140,9 @@ export default function DirectoryPage() {
                 }}
               >
                 {/* Avatar placeholder */}
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-sans font-semibold"
-                  style={{ background: 'var(--surface-2)', color: 'var(--text-3)' }}
-                >
-                  {name.charAt(0).toUpperCase()}
-                </div>
-
+                import Avatar from '../../components/ui/Avatar';
+                // ...
+                <Avatar avatarUrl={s.profile?.avatarUrl} name={name} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-sans font-medium text-t1 truncate">{name}</p>
                   <p className="text-xs font-sans truncate" style={{ color: 'var(--text-4)' }}>

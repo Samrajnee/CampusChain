@@ -10,6 +10,8 @@ import errorHandler from './middleware/errorHandler.js';
 import { startJobs } from './jobs/index.js';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 // Module routes
 import authRoutes from './modules/identity/auth.routes.js';
@@ -85,6 +87,18 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+// Serve uploaded avatars as static files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '7d', // browser caches avatars for 7 days
+  })
+);
+
 app.use(cookieParser());
 
 // ── DEV ONLY routes (no auth, must be before protected routes) ────────────────

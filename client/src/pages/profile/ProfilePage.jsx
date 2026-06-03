@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../api/identity';
@@ -9,6 +8,9 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
 import Spinner from '../../components/ui/Skeleton';
+import { useState, useRef, useEffect } from 'react';
+import Avatar from '../../components/ui/Avatar';
+import { uploadAvatar } from '../../api/identity';
 
 const PRIVACY_FIELDS = [
   { key: 'showPhone',       label: 'Show phone number' },
@@ -53,7 +55,33 @@ export default function ProfilePage() {
 
   const profile = data?.data?.profile;
   const detail  = data?.data?.studentDetail;
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
+async function handleAvatarUpload(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // Client-side size check
+  if (file.size > 3 * 1024 * 1024) {
+    setError('Image must be under 3 MB');
+    return;
+  }
+
+  setAvatarLoading(true);
+  setError('');
+  try {
+    const res = await uploadAvatar(file);
+    qc.invalidateQueries(['profile']);
+    setSuccess('Avatar updated');
+    setTimeout(() => setSuccess(''), 3000);
+  } catch (err) {
+    setError(err.response?.data?.message || 'Upload failed');
+  } finally {
+    setAvatarLoading(false);
+    // Reset input so the same file can be re-selected if needed
+    e.target.value = '';
+  }
+}
   const updateMut = useMutation({
     mutationFn: updateProfile,
     onSuccess: (res) => {
@@ -122,6 +150,46 @@ export default function ProfilePage() {
               {user?.role}
             </p>
           </div>
+          {/* Clickable avatar with upload overlay */}
+<div className="relative group cursor-pointer shrink-0">
+  <Avatar
+    avatarUrl={profile?.avatarUrl}
+    name={name}
+    size="lg"
+  />
+
+  {/* Upload overlay — shows on hover */}
+  <label
+    htmlFor="avatar-upload"
+    className="absolute inset-0 flex items-center justify-center rounded-xl cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+    style={{
+      background: 'rgba(11,17,32,0.55)',
+      borderRadius: '12px',
+    }}
+  >
+    {avatarLoading ? (
+      <div
+        className="w-4 h-4 rounded-full border-2 animate-spin"
+        style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }}
+      />
+    ) : (
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    )}
+  </label>
+
+  <input
+    id="avatar-upload"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    className="hidden"
+    onChange={handleAvatarUpload}
+  />
+</div>
         </div>
 
         {detail && (

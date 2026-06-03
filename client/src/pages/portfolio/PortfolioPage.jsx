@@ -212,16 +212,12 @@ export default function PortfolioPage() {
             {/* Identity */}
             <div>
               {/* Avatar initial */}
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-sans font-semibold mb-5"
-                style={{
-                  background: 'rgba(201,169,110,0.2)',
-                  border: '1px solid rgba(201,169,110,0.3)',
-                  color: '#C9A96E',
-                }}
-              >
-                {name.charAt(0).toUpperCase()}
-              </div>
+            <Avatar
+              avatarUrl={profile.avatarUrl}
+              name={name}
+              size="xl"
+              className="mb-5"
+            />
 
               <h1
                 className="font-display text-4xl md:text-5xl text-white mb-2"

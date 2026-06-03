@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
+import Avatar from '../ui/Avatar';
 
 const ADMIN_ROLES = [
   'TEACHER', 'HOD', 'LAB_ASSISTANT', 'LIBRARIAN', 'PRINCIPAL', 'SUPER_ADMIN',
@@ -110,6 +111,12 @@ export default function Sidebar() {
           border: '1px solid rgba(255,255,255,0.08)',
         }}
       >
+      <Avatar
+        avatarUrl={user?.profile?.avatarUrl}
+        name={fullName}
+        size="sm"
+        className="mb-2"
+      />
         <p className="text-sm font-sans text-white font-medium truncate leading-snug">
           {fullName}
         </p>
